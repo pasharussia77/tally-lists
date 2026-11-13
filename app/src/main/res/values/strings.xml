@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Tally Lists</string>
+    <string name="empty_slot">Ready for your next list</string>
+    <string name="new_list">New list</string>
+</resources>
