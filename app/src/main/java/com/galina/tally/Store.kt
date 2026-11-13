@@ -89,6 +89,12 @@ object Store {
         val result = HashMap<Int, Slot>()
         val taken = HashSet<Int>()
         val pending = ArrayList<JSONObject>()
+        val pin = mem.optInt("archivePin", 0)
+        val archSlot = if (arch.isEmpty()) 0 else if (pin in sorted) pin else sorted.last()
+        if (archSlot != 0) {
+            taken.add(archSlot)
+            result[archSlot] = Slot(null, arch)
+        }
         for (l in fulls) {
             val h = home.optInt(l.optString("id"), 0)
             if (h in sorted && h !in taken) {
@@ -96,22 +102,6 @@ object Store {
                 taken.add(h)
             } else {
                 pending.add(l)
-            }
-        }
-        var archSlot = 0
-        if (arch.isNotEmpty()) {
-            val cands = ArrayList<Int>()
-            val remembered = mem.optInt("archive", 0)
-            if (remembered != 0) cands.add(remembered)
-            arch.forEach {
-                val h = home.optInt(it.optString("id"), 0)
-                if (h != 0) cands.add(h)
-            }
-            archSlot = cands.firstOrNull { it in sorted && it !in taken }
-                ?: sorted.firstOrNull { it !in taken } ?: 0
-            if (archSlot != 0) {
-                taken.add(archSlot)
-                result[archSlot] = Slot(null, arch)
             }
         }
         for (l in pending) {
@@ -124,7 +114,6 @@ object Store {
             val ids = lists(d).map { it.optString("id") }.toSet()
             home.keys().asSequence().toList().forEach { if (it !in ids) home.remove(it) }
             mem.put("home", home)
-            if (archSlot != 0) mem.put("archive", archSlot)
             memSave(c, mem)
         }
         return result

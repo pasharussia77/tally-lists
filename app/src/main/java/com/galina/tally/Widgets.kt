@@ -69,7 +69,7 @@ object Widgets {
         val home = mem.optJSONObject("home") ?: JSONObject()
         fun setSlot(s: Slot?, no: Int) {
             if (s == null) return
-            if (s.list != null) home.put(s.list.optString("id"), no) else mem.put("archive", no)
+            if (s.list != null) home.put(s.list.optString("id"), no) else mem.put("archivePin", no)
         }
         setSlot(a, to)
         setSlot(b, from)
@@ -91,6 +91,7 @@ object Widgets {
         val mem = Store.memLoad(c)
         mem.remove("home")
         mem.remove("archive")
+        mem.remove("archivePin")
         mem.put("maxSeen", placed.maxOrNull() ?: 0)
         Store.memSave(c, mem)
         refresh(c)

@@ -36,8 +36,14 @@
             android:layout_weight="1" android:gravity="center" android:text="@string/empty_slot"
             android:textColor="@color/muted" android:textSize="15sp" android:visibility="gone"/>
     </LinearLayout>
-    <TextView android:id="@+id/slot_num" android:layout_width="18dp" android:layout_height="18dp"
-        android:layout_margin="3dp" android:layout_gravity="top|end" android:gravity="center"
-        android:background="@drawable/shape_badge" android:textColor="#FFFFFF" android:textSize="10sp"
-        android:textStyle="bold" android:includeFontPadding="false"/>
+    <FrameLayout android:id="@+id/badge" android:layout_width="18dp" android:layout_height="18dp"
+        android:layout_margin="3dp" android:layout_gravity="top|end">
+        <ImageView android:id="@+id/badge_fill" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:src="@drawable/shape_badge_fill" android:scaleType="fitXY"/>
+        <ImageView android:id="@+id/badge_ring" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:src="@drawable/shape_badge_ring" android:scaleType="fitXY"/>
+        <TextView android:id="@+id/slot_num" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:gravity="center" android:textColor="#FFFFFF" android:textSize="10sp" android:textStyle="bold"
+            android:includeFontPadding="false"/>
+    </FrameLayout>
 </FrameLayout>
