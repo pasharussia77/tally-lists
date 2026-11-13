@@ -58,6 +58,11 @@ class SlotWidgetProvider : AppWidgetProvider() {
                 slot != null -> { col = gray; title = "Older lists" }
                 else -> { col = gray; title = "Empty slot" }
             }
+            val empty = slot == null
+            rv.setViewVisibility(R.id.outline, if (empty) View.VISIBLE else View.GONE)
+            rv.setViewVisibility(R.id.frame, if (empty) View.GONE else View.VISIBLE)
+            rv.setViewVisibility(R.id.inner_bg, if (empty) View.GONE else View.VISIBLE)
+            rv.setViewVisibility(R.id.content, if (empty) View.GONE else View.VISIBLE)
             rv.setInt(R.id.frame, "setColorFilter", col)
             rv.setInt(R.id.hdr_bg, "setColorFilter", col)
             rv.setTextViewText(R.id.title, title)
