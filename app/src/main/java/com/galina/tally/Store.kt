@@ -233,23 +233,39 @@ object Store {
         return out
     }
 
+    /** "Milk, sugar, and oats" becomes three items. Commas inside numbers like 1,000 are left alone. */
+    private fun splitCommas(s: String): List<String> {
+        val parts = s.split(Regex(""",\s+"""))
+        if (parts.size < 2) return listOf(s)
+        return parts.map { it.trim().replace(Regex("""(?i)^(and|or)\s+"""), "") }
+            .filter { it.isNotEmpty() }
+            .map { it.replaceFirstChar { ch -> ch.uppercase() } }
+    }
+
     /** Splits dictated or typed text into separate items; a spoken "Adding to the list" intro is skipped. */
     fun parseItems(text: String): List<String> {
         val lines = text.split(Regex("""\r?\n""")).map { it.trim() }.filter { it.isNotEmpty() }
-        val segs = ArrayList<String>()
+        val segs = ArrayList<Pair<String, Boolean>>()
         for (ln in lines) {
-            if (DASH.containsMatchIn(ln)) segs.add(ln.replace(DASH, "")) else segs.addAll(sentences(ln))
+            if (DASH.containsMatchIn(ln)) segs.add(Pair(ln.replace(DASH, ""), false))
+            else sentences(ln).forEach { segs.add(Pair(it, true)) }
         }
         if (segs.isNotEmpty()) {
-            val f = segs[0]
+            val f = segs[0].first
             val ci = f.indexOf(':')
             if (INTRO.containsMatchIn(f) && ci > -1 && ci < f.length - 1) {
-                segs[0] = f.substring(ci + 1).trim()
+                segs[0] = Pair(f.substring(ci + 1).trim(), segs[0].second)
             } else if (segs.size > 1 && (f.trimEnd().endsWith(":") || INTRO.containsMatchIn(f))) {
                 segs.removeAt(0)
             }
         }
-        return segs.map { it.trim().trimEnd('.').trim() }.filter { it.isNotEmpty() }
+        val out = ArrayList<String>()
+        for ((t0, split) in segs) {
+            val t = t0.trim().trimEnd('.').trim()
+            if (t.isEmpty()) continue
+            if (split) out.addAll(splitCommas(t)) else out.add(t)
+        }
+        return out
     }
 
     fun addItems(c: Context, listId: String, texts: List<String>) {
