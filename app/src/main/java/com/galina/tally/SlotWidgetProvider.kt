@@ -45,6 +45,7 @@ class SlotWidgetProvider : AppWidgetProvider() {
 
         fun updateAll(c: Context) {
             Store.relockExpired(c)
+            Widgets.persist(c)
             val m = AppWidgetManager.getInstance(c)
             val ids = Widgets.slotIds(c)
             ids.forEach { m.updateAppWidget(it, build(c, it)) }
@@ -77,7 +78,7 @@ class SlotWidgetProvider : AppWidgetProvider() {
             }
             val empty = slot == null
             rv.setViewVisibility(R.id.slot_num, if (empty) View.VISIBLE else View.GONE)
-            if (empty) rv.setTextViewText(R.id.slot_num, (Widgets.slotIds(c).indexOf(id) + 1).toString())
+            if (empty) rv.setTextViewText(R.id.slot_num, Widgets.slotNo(c, id).toString())
             rv.setViewVisibility(R.id.outline, if (empty) View.VISIBLE else View.GONE)
             rv.setViewVisibility(R.id.frame, if (empty) View.GONE else View.VISIBLE)
             rv.setViewVisibility(R.id.inner_bg, if (empty) View.GONE else View.VISIBLE)

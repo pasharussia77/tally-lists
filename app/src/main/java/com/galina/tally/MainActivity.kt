@@ -196,6 +196,18 @@ class MainActivity : Activity() {
         fun getVersion(): String = Updater.versionName(this@MainActivity)
 
         @JavascriptInterface
+        fun getWidgetInfo(): String = Widgets.info(this@MainActivity)
+
+        @JavascriptInterface
+        fun restoreLayout() = Widgets.refresh(this@MainActivity)
+
+        @JavascriptInterface
+        fun forgetMissing() = Widgets.forgetMissing(this@MainActivity)
+
+        @JavascriptInterface
+        fun forgetLayout() = Widgets.forgetLayout(this@MainActivity)
+
+        @JavascriptInterface
         fun getSlotCount(): Int = Widgets.slotIds(this@MainActivity).size
     }
 }

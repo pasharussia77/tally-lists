@@ -41,30 +41,93 @@ object Store {
         return auto && (0 until its.length()).all { its.getJSONObject(it).optBoolean("done") }
     }
 
-    /** Same rules as the app screen: pinned Full lists, newest automatic lists, one archive slot. */
-    fun layout(c: Context, n: Int): List<Slot> {
-        val d = load(c)
+    private const val MEM = "tally_layout"
+
+    fun memLoad(c: Context): JSONObject = try {
+        JSONObject(c.getSharedPreferences(MEM, 0).getString("mem", "{}") ?: "{}")
+    } catch (e: Exception) {
+        JSONObject()
+    }
+
+    fun memSave(c: Context, m: JSONObject) {
+        c.getSharedPreferences(MEM, 0).edit().putString("mem", m.toString()).apply()
+    }
+
+    /** Which lists are shown in full and which go to the archive (same rules as the app screen). */
+    private fun selection(d: JSONObject, n: Int): Pair<List<JSONObject>, List<JSONObject>> {
         val auto = setting(d, "autoDone", true)
         val vis = lists(d).filter { it.optString("view", "auto") != "hidden" }
-        val pinned = vis.filter { it.optString("view") == "full" }.take(maxOf(n - 2, 0))
+        val allPinned = vis.filter { it.optString("view") == "full" }
+        val pinLimit = maxOf(n - 2, 0)
+        val pinned = allPinned.take(pinLimit)
+        val extra = allPinned.drop(pinLimit)
         val coll = vis.filter { it.optString("view") == "collapsed" }
         val autos = vis.filter { it.optString("view", "auto") == "auto" && !isDone(it, auto) }
             .sortedByDescending { it.optLong("created") }
         val free = n - pinned.size
-        val need = coll.isNotEmpty() || autos.size > free
-        val full: List<JSONObject>
-        val arch: List<JSONObject>
-        if (!need) {
-            full = autos
-            arch = emptyList()
+        val need = coll.isNotEmpty() || extra.isNotEmpty() || autos.size > free
+        return if (!need) {
+            Pair(autos + pinned, emptyList())
         } else {
             val k = maxOf(free - 1, 0)
-            full = autos.take(k)
-            arch = coll + autos.drop(k)
+            Pair(autos.take(k) + pinned, extra + coll + autos.drop(k))
         }
-        val slots = (full + pinned).map { Slot(it, emptyList()) }.toMutableList()
-        if (arch.isNotEmpty()) slots.add(Slot(null, arch))
-        return slots
+    }
+
+    /**
+     * Decides which list sits in which slot number. Every list remembers its home slot,
+     * so it returns there when that slot widget is placed again.
+     */
+    fun plan(c: Context, slotNos: List<Int>, persist: Boolean): Map<Int, Slot> {
+        val n = slotNos.size
+        if (n == 0) return emptyMap()
+        val sorted = slotNos.sorted()
+        val d = load(c)
+        val (fulls, arch) = selection(d, n)
+        val mem = memLoad(c)
+        val home = mem.optJSONObject("home") ?: JSONObject()
+        val result = HashMap<Int, Slot>()
+        val taken = HashSet<Int>()
+        val pending = ArrayList<JSONObject>()
+        for (l in fulls) {
+            val h = home.optInt(l.optString("id"), 0)
+            if (h in sorted && h !in taken) {
+                result[h] = Slot(l, emptyList())
+                taken.add(h)
+            } else {
+                pending.add(l)
+            }
+        }
+        var archSlot = 0
+        if (arch.isNotEmpty()) {
+            val cands = ArrayList<Int>()
+            val remembered = mem.optInt("archive", 0)
+            if (remembered != 0) cands.add(remembered)
+            arch.forEach {
+                val h = home.optInt(it.optString("id"), 0)
+                if (h != 0) cands.add(h)
+            }
+            archSlot = cands.firstOrNull { it in sorted && it !in taken }
+                ?: sorted.firstOrNull { it !in taken } ?: 0
+            if (archSlot != 0) {
+                taken.add(archSlot)
+                result[archSlot] = Slot(null, arch)
+            }
+        }
+        for (l in pending) {
+            val free = sorted.firstOrNull { it !in taken } ?: break
+            result[free] = Slot(l, emptyList())
+            taken.add(free)
+            if (home.optInt(l.optString("id"), 0) == 0) home.put(l.optString("id"), free)
+        }
+        if (persist) {
+            val ids = lists(d).map { it.optString("id") }.toSet()
+            home.keys().asSequence().toList().forEach { if (it !in ids) home.remove(it) }
+            mem.put("home", home)
+            if (archSlot != 0) mem.put("archive", archSlot)
+            memSave(c, mem)
+        }
+        return result
     }
 
     fun toggle(c: Context, listId: String, itemId: String) {

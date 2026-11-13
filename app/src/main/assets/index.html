@@ -59,6 +59,13 @@ textarea.entry{width:100%;min-height:150px;border:1px solid var(--line);border-r
 .sheet b.hd{display:block;margin-bottom:10px}
 #toastbox .toast{display:flex;align-items:center;gap:14px;bottom:calc(84px + env(safe-area-inset-bottom,0px))}
 .toastbtn{border:0;background:none;color:inherit;font-weight:800;text-decoration:underline;font-size:inherit;cursor:pointer;padding:4px 6px}
+.wbox{border-radius:16px;padding:14px;margin-bottom:14px;border:2px solid var(--line);background:var(--surface)}
+.wbox div{margin-top:4px;color:var(--muted)}
+.warnbox{border-color:var(--danger)}
+.okbox{border-color:var(--accent)}
+.slotrow .snum{width:30px;height:30px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center;font-weight:800;flex:none}
+.slotrow.miss{border-style:dashed}
+.slotrow.miss .nm b{color:var(--muted)}
 .abtn{border:0;background:none;color:inherit;display:grid;place-items:center;width:34px;height:34px;margin:-6px -8px -6px 0;cursor:pointer;padding:0;border-radius:10px}
 .abtn svg,.alarmline svg,.rowbell svg,.pinbtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .alarmline{display:flex;align-items:center;gap:6px;padding:6px 14px 0;color:var(--muted);font-weight:700;font-size:13px}
@@ -304,7 +311,7 @@ function vSettings(){var s=S.settings;
   function tg(k,t,sub){return'<div class="srow"><div class="lb">'+t+(sub?'<small>'+sub+'</small>':'')+'</div><button class="tog'+(s[k]?' on':'')+'" role="switch" aria-checked="'+!!s[k]+'" data-act="tog" data-k="'+k+'" aria-label="'+t+'"></button></div>'}
   var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>Settings</h1></div>';
   h+='<h2>Theme</h2><div class="seg">'+[["auto","Follow phone"],["light","Light"],["dark","Dark"]].map(function(o){return'<button class="'+(s.theme===o[0]?'on':'')+'" data-act="theme" data-t="'+o[0]+'">'+o[1]+'</button>'}).join("")+'</div>';
-  h+=window.Android?'<div class="srow"><div class="lb">Slot widgets<small>Counted from the slot widgets on your home screen (minimum 2, 3 recommended)</small></div><b>'+s.slots+'</b></div>':'<div class="srow"><div class="lb">Slot widgets<small>How many blank widgets you placed (minimum 2, 3 recommended)</small></div><div class="stepper"><button data-act="slots" data-d="-1" aria-label="Fewer slots">−</button><b>'+s.slots+'</b><button data-act="slots" data-d="1" aria-label="More slots">+</button></div></div>';
+  h+=window.Android?'<div class="srow"><div class="lb">Slot widgets<small>Counted from the slot widgets on your home screen (minimum 2, 3 recommended)</small></div><button class="btn" data-act="go" data-v="home">View ('+s.slots+')</button></div>':'<div class="srow"><div class="lb">Slot widgets<small>How many blank widgets you placed (minimum 2, 3 recommended)</small></div><div class="stepper"><button data-act="slots" data-d="-1" aria-label="Fewer slots">−</button><b>'+s.slots+'</b><button data-act="slots" data-d="1" aria-label="More slots">+</button></div></div>';
   h+='<h2>Optional features</h2>';
   h+=tg("autoDone","Auto-mark done","A list is done when every item is checked");
   h+=tg("hideChecked","Hide checked items","Checked items disappear from widgets");
@@ -319,7 +326,24 @@ function vSettings(){var s=S.settings;
   return h}
 
 function slotCard(l){var c=l.color,t=textOn(c);return'<div class="wcard" style="--c:'+c+';--t:'+t+'"><button class="whead" style="border:0;width:100%;text-align:left;font-family:inherit" data-act="open" data-l="'+l.id+'"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span>'+(l.locked?'<span class="abtn" style="pointer-events:none">'+lockIc(true)+'</span>':'')+(l.alarm?'<span class="abtn" style="pointer-events:none">'+bellIc(true)+'</span>':'')+'</button>'+alarmLine(l)+'<div class="wbody">'+itemsHtml(l)+'</div></div>'}
-function vHome(){var L=layout(),N=S.settings.slots,h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>Home screen slots</h1></div><div class="hint">A preview of what each blank widget shows on your phone.</div>';
+function vWidgets(){var info;try{info=JSON.parse(Android.getWidgetInfo())}catch(e){info={slots:[],expected:0,found:0,waiting:[]}}
+  var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>Widgets</h1></div>';
+  var miss=info.slots.filter(function(s){return s.kind==="missing"});
+  if(!info.expected){h+='<div class="empty">No slot widgets yet.<br>Long-press your home screen, tap Widgets, and add Tally Lists slots.</div>';return h}
+  h+='<div class="wbox '+(miss.length?'warnbox':'okbox')+'"><b>'+info.found+' of '+info.expected+' slots placed</b><div>'+
+    (miss.length?(miss.length===1?'Slot '+miss[0].no+' is':'Slots '+miss.map(function(s){return s.no}).join(", ")+' are')+' missing. Add a slot widget to your home screen. It takes the lowest missing number, and its list comes back.':'Every slot is in place.')+'</div></div>';
+  info.slots.forEach(function(s){var dot='',name='',sub='';
+    if(s.kind==="list"){dot='<span class="dot" style="background:'+esc(s.color)+'"></span>';name=esc(s.name);sub=s.locked?'Locked':''}
+    else if(s.kind==="archive"){dot='<span class="dot" style="background:var(--muted)"></span>';name='Older lists';sub=s.count+' collapsed'}
+    else if(s.kind==="empty"){name='Empty';sub='Ready for a list'}
+    else{name='Missing';sub='Not on a home screen'}
+    h+='<div class="mrow slotrow'+(s.kind==="missing"?' miss':'')+'"><span class="snum">'+s.no+'</span>'+dot+'<div class="nm"><b>'+name+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</div></div>'});
+  if(info.waiting.length){h+='<h2>Waiting for their slot</h2>'+info.waiting.map(function(w){return'<div class="mrow"><span class="dot" style="background:'+esc(w.color)+'"></span><div class="nm"><b>'+esc(w.name)+'</b><small>Belongs in slot '+w.home+'</small></div></div>'}).join("")}
+  h+='<div class="tools" style="margin-top:14px"><button class="btn fill" data-act="restoreLayout">Restore layout</button><button class="btn" data-act="forgetMissing">Forget missing slots</button><button class="btn warn" data-act="startOver">Start over</button></div>';
+  h+='<div class="hint">Each list remembers its slot number. Place a slot widget again and the list returns to it. Start over forgets the memory, and lists refill the slots newest first.</div>';
+  return h}
+
+function vHome(){if(window.Android)return vWidgets();var L=layout(),N=S.settings.slots,h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>Home screen slots</h1></div><div class="hint">A preview of what each blank widget shows on your phone.</div>';
   var n=0,total=L.full.length+(L.archive.length?1:0);
   L.full.forEach(function(l){n++;h+='<div class="slotlabel">Slot '+n+'</div>'+slotCard(l)});
   if(L.archive.length){n++;h+='<div class="slotlabel">Slot '+n+' (archive)</div><div class="wcard" style="--c:var(--muted);--t:var(--bg)"><div class="whead">Older lists</div><div class="wbody">'+
@@ -343,6 +367,9 @@ document.addEventListener("click",function(ev){
   var GUARD={toggle:1,delItem:1,addItem:1,toggleDone:1,setColor:1,rename:1,delList:1,colors:1};
   if(l&&l.locked&&GUARD[a]){toast("This list is locked. Tap the lock to edit.");return}
   switch(a){
+   case"restoreLayout":Android.restoreLayout();toast("Layout restored");setTimeout(render,400);break;
+   case"forgetMissing":Android.forgetMissing();toast("Missing slots forgotten");setTimeout(render,400);break;
+   case"startOver":if(confirm("Forget where each list belongs? Lists will refill the slots newest first.")){Android.forgetLayout();toast("Started over");setTimeout(render,400)}break;
    case"undo":undo();break;
    case"addTrig":{var tw=(document.getElementById("trigin").value||"").trim();var tl=S.settings.triggers||(S.settings.triggers=[]);
      if(!tw){break}if(tl.some(function(x){return String(x).toLowerCase()===tw.toLowerCase()})){toast("That word is already in the list");break}
