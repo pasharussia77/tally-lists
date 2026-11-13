@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/new_root" android:layout_width="match_parent" android:layout_height="match_parent"
-    android:background="@drawable/shape_new" android:gravity="center" android:orientation="vertical">
+    android:gravity="center" android:orientation="vertical">
+    <FrameLayout android:layout_width="56dp" android:layout_height="56dp"
+        android:background="@drawable/shape_circle">
+        <TextView android:layout_width="match_parent" android:layout_height="match_parent"
+            android:gravity="center" android:text="＋" android:textSize="32sp" android:textStyle="bold"
+            android:includeFontPadding="false" android:textColor="@color/accent_ink"/>
+    </FrameLayout>
     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="＋" android:textSize="30sp" android:textStyle="bold" android:textColor="@color/accent_ink"/>
-    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
-        android:text="New" android:textSize="11sp" android:textStyle="bold" android:textColor="@color/accent_ink"/>
+        android:layout_marginTop="4dp" android:text="@string/new_label" android:textSize="12sp"
+        android:maxLines="1" android:ellipsize="end" android:textColor="#FFFFFF"
+        android:shadowColor="#99000000" android:shadowDx="0" android:shadowDy="1" android:shadowRadius="3"/>
 </LinearLayout>
