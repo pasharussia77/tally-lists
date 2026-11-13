@@ -57,6 +57,8 @@ textarea.entry{width:100%;min-height:150px;border:1px solid var(--line);border-r
 .sheetbg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:65vh;overflow:auto;background:var(--bg);border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto}
 .sheet b.hd{display:block;margin-bottom:10px}
+#toastbox .toast{display:flex;align-items:center;gap:14px;bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+.toastbtn{border:0;background:none;color:inherit;font-weight:800;text-decoration:underline;font-size:inherit;cursor:pointer;padding:4px 6px}
 .abtn{border:0;background:none;color:inherit;display:grid;place-items:center;width:34px;height:34px;margin:-6px -8px -6px 0;cursor:pointer;padding:0;border-radius:10px}
 .abtn svg,.alarmline svg,.rowbell svg,.pinbtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .alarmline{display:flex;align-items:center;gap:6px;padding:6px 14px 0;color:var(--muted);font-weight:700;font-size:13px}
@@ -177,12 +179,16 @@ function layout(){var N=S.settings.slots,vis=S.lists.filter(function(l){return l
 
 /* ---------- helpers ---------- */
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
-function toast(msg){var b=document.getElementById("toastbox");b.innerHTML='<div class="toast" role="status">'+esc(msg)+'</div>';setTimeout(function(){b.innerHTML=""},2600)}
+var toastT=null;
+function toast(msg,undoable){var b=document.getElementById("toastbox");clearTimeout(toastT);
+  b.innerHTML='<div class="toast" role="status"><span>'+esc(msg)+'</span>'+(undoable?'<button class="toastbtn" data-act="undo">Undo</button>':'')+'</div>';
+  toastT=setTimeout(function(){b.innerHTML=""},undoable?7000:2600)}
 var IC={
  back:'<svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>',
  manage:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
  gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
  check:'<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>',
+ undo:'<svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>',
  sort:'<svg viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3M7 20l3-3"/><path d="M17 20V4M17 4l-3 3M17 4l3 3"/></svg>',
  lock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
  unlock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>',
@@ -198,15 +204,20 @@ function itemsHtml(l,limit){var its=sortedItems(l).filter(function(i){return !(S
   if(!its.length)return'<div class="hint">'+(l.items.length?'All items checked.':'No items yet.')+'</div>';
   return its.slice(0,limit||999).map(function(i){return'<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span></div>'}).join("")}
 function counts(l){var d=l.items.filter(function(i){return i.done}).length;return d+" of "+l.items.length}
+var UNDO=[];
+function snap(label){UNDO.push({label:label,data:JSON.stringify(S.lists)});if(UNDO.length>10)UNDO.shift()}
+function undo(){var u=UNDO.pop();if(!u){toast("Nothing to undo");return}
+  S.lists=JSON.parse(u.data);UI.tool=null;UI.sel=[];UI.pick=false;UI.merge=null;save();render();toast("Undid: "+u.label)}
+function undoBtn(){return UNDO.length?'<button class="icon-btn" data-act="undo" aria-label="Undo: '+esc(UNDO[UNDO.length-1].label)+'">'+IC.undo+'</button>':''}
 function baseName(n){return n.replace(/,\s[A-Za-z]{3}\s\d{1,2}$/,'').replace(/\s\d+$/,'').trim().toLowerCase()}
 function dateStr(){return new Date().toLocaleDateString([],{month:"short",day:"numeric"})}
 function cap(t){return t.charAt(0).toUpperCase()+t.slice(1)}
-function dupeName(name){var b=baseName(name),n=1+S.lists.filter(function(l){return baseName(l.name)===b}).length;if(n===1)return name;
-  var out=S.settings.numberDupes?name+" "+n:name;if(S.settings.dateDupes)out+=", "+dateStr();return out}
+function dupeName(name){var b=baseName(name),n=1+S.lists.filter(function(l){return baseName(l.name)===b}).length;
+  var out=name;if(n>1&&S.settings.numberDupes)out+=" "+n;if(S.settings.dateDupes)out+=", "+dateStr();return out}
 function resolveRules(p){var nm=p.name.toLowerCase(),trg=S.settings.triggers||[];
   for(var i=0;i<trg.length;i++){var raw=String(trg[i]).trim(),t=raw.toLowerCase();
-    if(t&&nm.indexOf(t)>-1){var target=S.lists.find(function(l){return l.name.trim().toLowerCase()===t});
-      return{target:target||null,name:target?target.name:cap(raw)}}}
+    if(t&&nm.indexOf(t)>-1){var target=S.lists.find(function(l){return baseName(l.name)===t});
+      return{target:target||null,name:target?target.name:dupeName(cap(raw))}}}
   return{target:null,name:dupeName(p.name)}}
 function triggersHtml(){var t=S.settings.triggers||[];
   return'<h2>Trigger words</h2><div class="hint">If a new list’s name contains one of these words, its items go into the list with that name. The list is created the first time.</div><div class="chips">'+
@@ -224,7 +235,7 @@ function alarmPanel(l){var base=l.alarm||(Math.ceil((Date.now()+3600000)/900000)
 /* ---------- views ---------- */
 function vDash(){
   var act=S.lists.filter(function(l){return !isDone(l)}).sort(function(a,b){return (b.pinned?1:0)-(a.pinned?1:0)||b.created-a.created});
-  var h='<div class="top"><h1>My lists</h1><button class="icon-btn" data-act="go" data-v="manager" aria-label="List manager">'+IC.manage+'</button><button class="icon-btn" data-act="go" data-v="settings" aria-label="Settings">'+IC.gear+'</button></div>';
+  var h='<div class="top"><h1>My lists</h1>'+undoBtn()+'<button class="icon-btn" data-act="go" data-v="manager" aria-label="List manager">'+IC.manage+'</button><button class="icon-btn" data-act="go" data-v="settings" aria-label="Settings">'+IC.gear+'</button></div>';
   h+='<button class="primary" data-act="new">New list</button>';
   if(!act.length)h+='<div class="empty">No active lists yet.<br>Tap New list and dictate your first one.</div>';
   act.forEach(function(l){var pct=l.items.length?Math.round(100*l.items.filter(function(i){return i.done}).length/l.items.length):0;
@@ -243,7 +254,7 @@ function vNew(){
 
 function vList(){var l=byId(UI.listId);if(!l){UI.view="dash";return vDash()}
   var T=UI.tool,sel=UI.sel||[];
-  var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1 style="overflow:hidden;text-overflow:ellipsis">'+esc(l.name)+'</h1></div>';
+  var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1 style="overflow:hidden;text-overflow:ellipsis">'+esc(l.name)+'</h1>'+undoBtn()+'</div>';
   h+='<div class="wcard" style="--c:'+l.color+';--t:'+textOn(l.color)+'"><div class="whead"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span>'+
     '<button class="abtn" data-act="sortc" data-l="'+l.id+'" aria-label="Move checked items to the bottom" aria-pressed="'+!!l.sortChecked+'" style="opacity:'+(l.sortChecked?1:.55)+'">'+IC.sort+'</button>'+
     '<button class="abtn" data-act="lock" data-l="'+l.id+'" aria-label="'+(l.locked?'Unlock list':'Lock list')+'" aria-pressed="'+!!l.locked+'">'+lockIc(!!l.locked)+'</button>'+
@@ -273,7 +284,7 @@ function vList(){var l=byId(UI.listId);if(!l){UI.view="dash";return vDash()}
   return h}
 
 function vManager(){var M=UI.merge;
-  var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>List manager</h1><button class="btn'+(M?' fill':'')+'" data-act="mergeMode">'+(M?'Cancel':'Merge')+'</button></div>';
+  var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>List manager</h1>'+undoBtn()+'<button class="btn'+(M?' fill':'')+'" data-act="mergeMode">'+(M?'Cancel':'Merge')+'</button></div>';
   h+='<div class="seg">'+["active","done","all"].map(function(f){return'<button class="'+(UI.filter===f?'on':'')+'" data-act="filter" data-f="'+f+'">'+f[0].toUpperCase()+f.slice(1)+'</button>'}).join("")+'</div>';
   var ls=S.lists.filter(function(l){return UI.filter==="all"||(UI.filter==="done")===isDone(l)}).sort(function(a,b){return b.created-a.created});
   if(!ls.length)h+='<div class="empty">Nothing here.</div>';
@@ -299,7 +310,7 @@ function vSettings(){var s=S.settings;
   h+=tg("hideChecked","Hide checked items","Checked items disappear from widgets");
   h+=tg("dim","Dim checked items","Off keeps checked text at full strength with the strikethrough");
   h+=tg("numberDupes","Number repeated names","Shopping list, Shopping list 2, 3…");
-  h+=tg("dateDupes","Add the date to repeated names","Shopping list 2, Nov 13");
+  h+=tg("dateDupes","Add the date to every new list name","Shopping list, Nov 13");
   h+=tg("lockNew","Lock new lists","New lists start locked so they can\u2019t be changed by accident");
   h+=triggersHtml();
   h+='<h2>Color palette</h2><div class="seg">'+[["soft","Soft"],["rich","Richer"],["mixed","Mixed"]].map(function(o){return'<button class="'+(s.palette===o[0]?'on':'')+'" data-act="palette" data-p="'+o[0]+'">'+o[1]+'</button>'}).join("")+'</div>';
@@ -332,6 +343,7 @@ document.addEventListener("click",function(ev){
   var GUARD={toggle:1,delItem:1,addItem:1,toggleDone:1,setColor:1,rename:1,delList:1,colors:1};
   if(l&&l.locked&&GUARD[a]){toast("This list is locked. Tap the lock to edit.");return}
   switch(a){
+   case"undo":undo();break;
    case"addTrig":{var tw=(document.getElementById("trigin").value||"").trim();var tl=S.settings.triggers||(S.settings.triggers=[]);
      if(!tw){break}if(tl.some(function(x){return String(x).toLowerCase()===tw.toLowerCase()})){toast("That word is already in the list");break}
      tl.push(tw);save();render();break}
@@ -342,16 +354,16 @@ document.addEventListener("click",function(ev){
    case"toolCancel":UI.tool=null;UI.sel=[];UI.pick=false;render();break;
    case"pickItem":{var ix=UI.sel.indexOf(el.dataset.i);if(ix>-1)UI.sel.splice(ix,1);else UI.sel.push(el.dataset.i);var yy=window.scrollY;render();window.scrollTo(0,yy);break}
    case"toolGo":{if(!UI.sel.length){toast("Select items first");break}var cl2=byId(UI.listId);
-     if(UI.tool==="delete"){var cnt=UI.sel.length;cl2.items=cl2.items.filter(function(i){return UI.sel.indexOf(i.id)<0});save();toast("Deleted "+cnt+" item"+(cnt===1?"":"s"));UI.tool=null;UI.sel=[];render()}
+     if(UI.tool==="delete"){snap("Delete items");var cnt=UI.sel.length;cl2.items=cl2.items.filter(function(i){return UI.sel.indexOf(i.id)<0});save();toast("Deleted "+cnt+" item"+(cnt===1?"":"s"),true);UI.tool=null;UI.sel=[];render()}
      else{UI.pick=true;render()}break}
    case"pickClose":UI.pick=false;render();break;
-   case"dest":{var src=byId(UI.listId),chosen=src.items.filter(function(i){return UI.sel.indexOf(i.id)>-1}),dd=el.dataset.d,dl;
-     if(dd==="new"){var nn=prompt("Name for the new list","New list");if(!nn||!nn.trim())break;
+   case"dest":{snap(UI.tool==="move"?"Move items":"Copy items");var src=byId(UI.listId),chosen=src.items.filter(function(i){return UI.sel.indexOf(i.id)>-1}),dd=el.dataset.d,dl;
+     if(dd==="new"){var nn=prompt("Name for the new list","New list");if(!nn||!nn.trim()){UNDO.pop();break}
        dl={id:uid(),name:dupeName(nn.trim()),color:pickColor(),created:Date.now(),view:"auto",locked:!!S.settings.lockNew,items:[]};S.lists.push(dl)}
      else dl=byId(dd);
      chosen.forEach(function(i){dl.items.push({id:uid(),text:i.text,done:i.done})});delete dl.manualDone;
      if(UI.tool==="move")src.items=src.items.filter(function(i){return UI.sel.indexOf(i.id)<0});
-     save();toast((UI.tool==="move"?"Moved ":"Copied ")+chosen.length+" to "+dl.name);UI.tool=null;UI.sel=[];UI.pick=false;render();break}
+     save();toast((UI.tool==="move"?"Moved ":"Copied ")+chosen.length+" to "+dl.name,true);UI.tool=null;UI.sel=[];UI.pick=false;render();break}
    case"mergeMode":UI.merge=UI.merge?null:{keep:null,ids:[]};render();break;
    case"mergePick":{var M=UI.merge,id2=el.dataset.l;
      if(!M.keep)M.keep=id2;else if(id2===M.keep)M.keep=M.ids.shift()||null;
@@ -359,17 +371,17 @@ document.addEventListener("click",function(ev){
      render();break}
    case"mergeGo":{var M2=UI.merge;if(!M2||!M2.keep||!M2.ids.length)break;var kp=byId(M2.keep);
      if(!confirm("Merge "+M2.ids.length+" list"+(M2.ids.length===1?"":"s")+" into “"+kp.name+"”? The merged lists will be removed."))break;
-     M2.ids.forEach(function(id){var s=byId(id);if(!s)return;s.items.forEach(function(i){kp.items.push({id:uid(),text:i.text,done:i.done})})});
-     delete kp.manualDone;S.lists=S.lists.filter(function(x){return M2.ids.indexOf(x.id)<0});save();UI.merge=null;toast("Lists merged");render();break}
+     snap("Merge lists");M2.ids.forEach(function(id){var s=byId(id);if(!s)return;s.items.forEach(function(i){kp.items.push({id:uid(),text:i.text,done:i.done})})});
+     delete kp.manualDone;S.lists=S.lists.filter(function(x){return M2.ids.indexOf(x.id)<0});save();UI.merge=null;toast("Lists merged",true);render();break}
    case"sortc":l.sortChecked=!l.sortChecked;save();render();break;
    case"lock":l.locked=!l.locked;delete l.unlockedAt;save();render();toast(l.locked?"List locked":"List unlocked");break;
    case"go":go(el.dataset.v);break;
    case"new":UI.draft="";UI._previewColor=null;go("new");break;
    case"saveNew":{var p=parse(UI.draft);if(!p)break;var rr=resolveRules(p);
-     if(rr.target){p.items.forEach(function(t){rr.target.items.push({id:uid(),text:t,done:false})});delete rr.target.manualDone;save();UI.draft="";UI._previewColor=null;go("dash");toast("Added "+p.items.length+" item"+(p.items.length===1?"":"s")+" to "+rr.target.name);break}
+     if(rr.target){snap("Add to "+rr.target.name);p.items.forEach(function(t){rr.target.items.push({id:uid(),text:t,done:false})});delete rr.target.manualDone;save();UI.draft="";UI._previewColor=null;go("dash");toast("Added "+p.items.length+" item"+(p.items.length===1?"":"s")+" to "+rr.target.name,true);break}
      var c=UI._previewColor||pickColor();
-     S.lists.push({id:uid(),name:rr.name,color:c,created:Date.now(),view:"auto",locked:!!S.settings.lockNew,items:p.items.map(function(t){return{id:uid(),text:t,done:false}})});
-     save();UI.draft="";UI._previewColor=null;go("dash");toast("List saved");break}
+     snap("Create list");S.lists.push({id:uid(),name:rr.name,color:c,created:Date.now(),view:"auto",locked:!!S.settings.lockNew,items:p.items.map(function(t){return{id:uid(),text:t,done:false}})});
+     save();UI.draft="";UI._previewColor=null;go("dash");toast("List saved",true);break}
    case"open":UI.listId=el.dataset.l;go("list");break;
    case"toggle":{var it=l.items.find(function(i){return i.id===el.dataset.i});it.done=!it.done;if(l.manualDone!==undefined&&!it.done)delete l.manualDone;save();var y=window.scrollY;render();window.scrollTo(0,y);break}
    case"delItem":l.items=l.items.filter(function(i){return i.id!==el.dataset.i});save();render();break;
@@ -378,7 +390,7 @@ document.addEventListener("click",function(ev){
    case"colors":UI.showColors=!UI.showColors;render();break;
    case"setColor":l.color=el.dataset.c;save();render();break;
    case"rename":{var n=prompt("List name",l.name);if(n&&n.trim()){l.name=n.trim();save();render()}break}
-   case"delList":if(confirm("Delete this list?")){S.lists=S.lists.filter(function(x){return x!==l});save();go("dash")}break;
+   case"delList":if(confirm("Delete this list?")){snap("Delete list");S.lists=S.lists.filter(function(x){return x!==l});save();go("dash");toast("List deleted",true)}break;
    case"setView":{var v=el.dataset.v;if(l.view===v)break;
      if(v==="full"){var others=S.lists.filter(function(x){return x.view==="full"&&x!==l}).length;
        if(others>=pinLimit()){toast("All pin spots are in use. Free one first, or add slot widgets.");break}}
@@ -437,7 +449,7 @@ function checkAlarms(){if(window.Android)return;var now=Date.now(),hit=null;
   var ae=document.activeElement;if(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"))drawRing();else render()}
 
 function syncSlots(){if(window.Android){try{S.settings.slots=Math.max(2,Android.getSlotCount())}catch(e){}}}
-window.__reload=function(){try{var r=Android.getData();if(!r)return;var d=JSON.parse(r);S.lists=d.lists||[];S.settings=Object.assign(S.settings,d.settings||{});syncSlots();render()}catch(e){}};
+window.__reload=function(){try{var r=Android.getData();if(!r)return;UNDO.length=0;var d=JSON.parse(r);S.lists=d.lists||[];S.settings=Object.assign(S.settings,d.settings||{});syncSlots();render()}catch(e){}};
 window.__newList=function(){UI.draft="";UI._previewColor=null;go("new")};
 window.__openList=function(id){if(byId(id)){UI.listId=id;go("list")}};
 window.__back=function(){if(UI.pick){UI.pick=false;render();return true}if(UI.tool||UI.merge){UI.tool=null;UI.sel=[];UI.merge=null;render();return true}if(UI.view!=="dash"){go("dash");return true}return false};
