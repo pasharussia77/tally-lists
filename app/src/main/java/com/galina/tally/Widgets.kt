@@ -56,6 +56,28 @@ object Widgets {
         c.sendBroadcast(Intent(Store.ACTION_CHANGED).setPackage(c.packageName))
     }
 
+    /** Swap what two slots hold (a list, the archive, or nothing). */
+    fun moveSlot(c: Context, from: Int, to: Int) {
+        if (from == to) return
+        val placed = slotNumbers(c).values.sorted()
+        if (from !in placed || to !in placed) return
+        Store.plan(c, placed, true)
+        val plan = Store.plan(c, placed, false)
+        val a = plan[from]
+        val b = plan[to]
+        val mem = Store.memLoad(c)
+        val home = mem.optJSONObject("home") ?: JSONObject()
+        fun setSlot(s: Slot?, no: Int) {
+            if (s == null) return
+            if (s.list != null) home.put(s.list.optString("id"), no) else mem.put("archive", no)
+        }
+        setSlot(a, to)
+        setSlot(b, from)
+        mem.put("home", home)
+        Store.memSave(c, mem)
+        refresh(c)
+    }
+
     fun forgetMissing(c: Context) {
         val placed = slotNumbers(c).values
         val mem = Store.memLoad(c)
@@ -97,8 +119,24 @@ object Widgets {
                     o.put("name", s.list.optString("name"))
                     o.put("color", s.list.optString("color"))
                     o.put("locked", s.list.optBoolean("locked"))
+                    val its = s.list.optJSONArray("items")
+                    val arr = JSONArray()
+                    if (its != null) for (i in 0 until minOf(its.length(), 4)) {
+                        val item = its.getJSONObject(i)
+                        arr.put(JSONObject().put("t", item.optString("text")).put("d", item.optBoolean("done")))
+                    }
+                    o.put("items", arr)
+                    o.put("total", its?.length() ?: 0)
                 }
-                else -> { o.put("kind", "archive"); o.put("count", s.archive.size) }
+                else -> {
+                    o.put("kind", "archive")
+                    o.put("count", s.archive.size)
+                    val names = JSONArray()
+                    s.archive.take(4).forEach {
+                        names.put(JSONObject().put("n", it.optString("name")).put("c", it.optString("color")))
+                    }
+                    o.put("names", names)
+                }
             }
             slots.put(o)
         }

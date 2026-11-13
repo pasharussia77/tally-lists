@@ -77,8 +77,8 @@ class SlotWidgetProvider : AppWidgetProvider() {
                 else -> { col = gray; title = "Empty slot" }
             }
             val empty = slot == null
-            rv.setViewVisibility(R.id.slot_num, if (empty) View.VISIBLE else View.GONE)
-            if (empty) rv.setTextViewText(R.id.slot_num, Widgets.slotNo(c, id).toString())
+            rv.setViewVisibility(R.id.slot_num, View.VISIBLE)
+            rv.setTextViewText(R.id.slot_num, Widgets.slotNo(c, id).toString())
             rv.setViewVisibility(R.id.outline, if (empty) View.VISIBLE else View.GONE)
             rv.setViewVisibility(R.id.frame, if (empty) View.GONE else View.VISIBLE)
             rv.setViewVisibility(R.id.inner_bg, if (empty) View.GONE else View.VISIBLE)

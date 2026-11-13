@@ -66,6 +66,22 @@ textarea.entry{width:100%;min-height:150px;border:1px solid var(--line);border-r
 .slotrow .snum{width:30px;height:30px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center;font-weight:800;flex:none}
 .slotrow.miss{border-style:dashed}
 .slotrow.miss .nm b{color:var(--muted)}
+.minigrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mini{position:relative;height:150px;border:3px solid var(--c,var(--line));border-radius:16px;background:var(--surface);overflow:hidden;cursor:grab;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
+.mini .mh{background:var(--c);color:var(--t);font-weight:800;font-size:13px;margin:4px;border-radius:10px;padding:6px 26px 6px 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini .mi{display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 9px}
+.mini .mi span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mini .mi i{width:10px;height:10px;border-radius:3px;border:2px solid var(--c);flex:none;box-sizing:border-box}
+.mini .mi i.on{background:var(--c)}
+.mini .mi i.d{border:0;border-radius:50%}
+.mini .mi.md span{text-decoration:line-through;color:var(--muted)}
+.mini .mnum{position:absolute;top:3px;right:3px;width:18px;height:18px;border-radius:50%;background:rgba(0,0,0,.45);color:#fff;font-size:10px;font-weight:800;display:grid;place-items:center;z-index:2}
+.mini.none,.mini.miss{border-style:dashed;border-color:var(--muted);cursor:default}
+.mini.none{cursor:grab}
+.mini .mmid{position:absolute;inset:0;display:grid;place-items:center;color:var(--muted);font-weight:700}
+.mini.picked{outline:3px solid var(--accent);outline-offset:2px}
+.mini.droptarget{outline:3px dashed var(--accent);outline-offset:2px}
+.mini.dragging{z-index:50;opacity:.92;box-shadow:0 10px 24px rgba(0,0,0,.35);transition:none;touch-action:none}
 .abtn{border:0;background:none;color:inherit;display:grid;place-items:center;width:34px;height:34px;margin:-6px -8px -6px 0;cursor:pointer;padding:0;border-radius:10px}
 .abtn svg,.alarmline svg,.rowbell svg,.pinbtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .alarmline{display:flex;align-items:center;gap:6px;padding:6px 14px 0;color:var(--muted);font-weight:700;font-size:13px}
@@ -326,18 +342,21 @@ function vSettings(){var s=S.settings;
   return h}
 
 function slotCard(l){var c=l.color,t=textOn(c);return'<div class="wcard" style="--c:'+c+';--t:'+t+'"><button class="whead" style="border:0;width:100%;text-align:left;font-family:inherit" data-act="open" data-l="'+l.id+'"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span>'+(l.locked?'<span class="abtn" style="pointer-events:none">'+lockIc(true)+'</span>':'')+(l.alarm?'<span class="abtn" style="pointer-events:none">'+bellIc(true)+'</span>':'')+'</button>'+alarmLine(l)+'<div class="wbody">'+itemsHtml(l)+'</div></div>'}
+function miniCard(s){var sel=UI.pickSlot===s.no,num='<span class="mnum">'+s.no+'</span>';
+  if(s.kind==="missing")return'<div class="mini miss">'+num+'<div class="mmid">Missing</div></div>';
+  if(s.kind==="empty")return'<div class="mini none'+(sel?' picked':'')+'" data-act="slotPick" data-slot="'+s.no+'">'+num+'<div class="mmid">Empty</div></div>';
+  if(s.kind==="archive")return'<div class="mini'+(sel?' picked':'')+'" data-act="slotPick" data-slot="'+s.no+'" style="--c:var(--muted);--t:var(--bg)">'+num+'<div class="mh">Older lists</div>'+
+    (s.names||[]).map(function(x){return'<div class="mi"><i class="d" style="background:'+esc(x.c)+'"></i><span>'+esc(x.n)+'</span></div>'}).join("")+'</div>';
+  return'<div class="mini'+(sel?' picked':'')+'" data-act="slotPick" data-slot="'+s.no+'" style="--c:'+esc(s.color)+';--t:'+textOn(s.color)+'">'+num+'<div class="mh">'+esc(s.name)+'</div>'+
+    (s.items||[]).map(function(i){return'<div class="mi'+(i.d?' md':'')+'"><i class="'+(i.d?'on':'')+'"></i><span>'+esc(i.t)+'</span></div>'}).join("")+'</div>'}
 function vWidgets(){var info;try{info=JSON.parse(Android.getWidgetInfo())}catch(e){info={slots:[],expected:0,found:0,waiting:[]}}
   var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>Widgets</h1></div>';
   var miss=info.slots.filter(function(s){return s.kind==="missing"});
   if(!info.expected){h+='<div class="empty">No slot widgets yet.<br>Long-press your home screen, tap Widgets, and add Tally Lists slots.</div>';return h}
   h+='<div class="wbox '+(miss.length?'warnbox':'okbox')+'"><b>'+info.found+' of '+info.expected+' slots placed</b><div>'+
     (miss.length?(miss.length===1?'Slot '+miss[0].no+' is':'Slots '+miss.map(function(s){return s.no}).join(", ")+' are')+' missing. Add a slot widget to your home screen. It takes the lowest missing number, and its list comes back.':'Every slot is in place.')+'</div></div>';
-  info.slots.forEach(function(s){var dot='',name='',sub='';
-    if(s.kind==="list"){dot='<span class="dot" style="background:'+esc(s.color)+'"></span>';name=esc(s.name);sub=s.locked?'Locked':''}
-    else if(s.kind==="archive"){dot='<span class="dot" style="background:var(--muted)"></span>';name='Older lists';sub=s.count+' collapsed'}
-    else if(s.kind==="empty"){name='Empty';sub='Ready for a list'}
-    else{name='Missing';sub='Not on a home screen'}
-    h+='<div class="mrow slotrow'+(s.kind==="missing"?' miss':'')+'"><span class="snum">'+s.no+'</span>'+dot+'<div class="nm"><b>'+name+'</b>'+(sub?'<small>'+sub+'</small>':'')+'</div></div>'});
+  h+='<div class="hint" style="margin-top:0">Press and hold a slot, then drag it onto another slot to swap them. Or tap one slot, then tap where it should go.</div>';
+  h+='<div class="minigrid">'+info.slots.map(miniCard).join("")+'</div>';
   if(info.waiting.length){h+='<h2>Waiting for their slot</h2>'+info.waiting.map(function(w){return'<div class="mrow"><span class="dot" style="background:'+esc(w.color)+'"></span><div class="nm"><b>'+esc(w.name)+'</b><small>Belongs in slot '+w.home+'</small></div></div>'}).join("")}
   h+='<div class="tools" style="margin-top:14px"><button class="btn fill" data-act="restoreLayout">Restore layout</button><button class="btn" data-act="forgetMissing">Forget missing slots</button><button class="btn warn" data-act="startOver">Start over</button></div>';
   h+='<div class="hint">Each list remembers its slot number. Place a slot widget again and the list returns to it. Start over forgets the memory, and lists refill the slots newest first.</div>';
@@ -358,7 +377,7 @@ function render(){
   if(v==="new"){var e=document.getElementById("entry");e.focus();var n=e.value.length;e.setSelectionRange(n,n)}
   drawRing();
 }
-function go(v){UI.view=v;UI.showColors=false;UI.alarmOpen=false;UI.tool=null;UI.sel=[];UI.pick=false;UI.merge=null;window.scrollTo(0,0);render()}
+function go(v){UI.view=v;UI.showColors=false;UI.alarmOpen=false;UI.pickSlot=null;UI.tool=null;UI.sel=[];UI.pick=false;UI.merge=null;window.scrollTo(0,0);render()}
 
 /* ---------- events ---------- */
 document.addEventListener("click",function(ev){
@@ -367,6 +386,11 @@ document.addEventListener("click",function(ev){
   var GUARD={toggle:1,delItem:1,addItem:1,toggleDone:1,setColor:1,rename:1,delList:1,colors:1};
   if(l&&l.locked&&GUARD[a]){toast("This list is locked. Tap the lock to edit.");return}
   switch(a){
+   case"slotPick":{if(Date.now()-JUSTDRAG<500)break;var sn=Number(el.dataset.slot);
+     if(UI.pickSlot==null)UI.pickSlot=sn;
+     else if(UI.pickSlot===sn)UI.pickSlot=null;
+     else{var fromS=UI.pickSlot;UI.pickSlot=null;Android.moveSlot(fromS,sn);toast("Swapped slot "+fromS+" and slot "+sn);setTimeout(render,400)}
+     render();break}
    case"restoreLayout":Android.restoreLayout();toast("Layout restored");setTimeout(render,400);break;
    case"forgetMissing":Android.forgetMissing();toast("Missing slots forgotten");setTimeout(render,400);break;
    case"startOver":if(confirm("Forget where each list belongs? Lists will refill the slots newest first.")){Android.forgetLayout();toast("Started over");setTimeout(render,400)}break;
@@ -475,6 +499,23 @@ function checkAlarms(){if(window.Android)return;var now=Date.now(),hit=null;
   try{if("Notification" in window&&Notification.permission==="granted")new Notification("Alarm: "+hit.name)}catch(e){}
   var ae=document.activeElement;if(ae&&(ae.tagName==="INPUT"||ae.tagName==="TEXTAREA"))drawRing();else render()}
 
+var DRAG=null,HOLD=null,JUSTDRAG=0;
+function slotUnder(el,x,y){el.style.pointerEvents="none";var u=document.elementFromPoint(x,y);el.style.pointerEvents="";return u&&u.closest?u.closest(".mini[data-slot]"):null}
+function startDrag(m,x,y){DRAG={el:m,x:x,y:y,slot:Number(m.dataset.slot),over:null};m.classList.add("dragging");try{navigator.vibrate&&navigator.vibrate(20)}catch(e){}}
+function moveDrag(x,y){var D=DRAG;D.el.style.transform="translate("+(x-D.x)+"px,"+(y-D.y)+"px) scale(1.05)";
+  var t=slotUnder(D.el,x,y);if(t===D.el)t=null;
+  if(t!==D.over){if(D.over)D.over.classList.remove("droptarget");D.over=t;if(t)t.classList.add("droptarget")}}
+function endDrag(){if(HOLD){clearTimeout(HOLD.timer);HOLD=null}if(!DRAG)return;var D=DRAG;DRAG=null;JUSTDRAG=Date.now();
+  D.el.classList.remove("dragging");D.el.style.transform="";
+  if(D.over){D.over.classList.remove("droptarget");var to=Number(D.over.dataset.slot);Android.moveSlot(D.slot,to);toast("Swapped slot "+D.slot+" and slot "+to);setTimeout(render,400)}else render()}
+document.addEventListener("touchstart",function(ev){if(UI.view!=="home"||!window.Android)return;
+  var m=ev.target.closest?ev.target.closest(".mini[data-slot]"):null;if(!m)return;var t=ev.touches[0];
+  HOLD={x:t.clientX,y:t.clientY,timer:setTimeout(function(){var hd=HOLD;HOLD=null;if(hd)startDrag(m,hd.x,hd.y)},300)}},{passive:true});
+document.addEventListener("touchmove",function(ev){var t=ev.touches[0];
+  if(DRAG){ev.preventDefault();moveDrag(t.clientX,t.clientY);return}
+  if(HOLD&&(Math.abs(t.clientX-HOLD.x)>10||Math.abs(t.clientY-HOLD.y)>10)){clearTimeout(HOLD.timer);HOLD=null}},{passive:false});
+document.addEventListener("touchend",endDrag);
+document.addEventListener("touchcancel",endDrag);
 function syncSlots(){if(window.Android){try{S.settings.slots=Math.max(2,Android.getSlotCount())}catch(e){}}}
 window.__reload=function(){try{var r=Android.getData();if(!r)return;UNDO.length=0;var d=JSON.parse(r);S.lists=d.lists||[];S.settings=Object.assign(S.settings,d.settings||{});syncSlots();render()}catch(e){}};
 window.__newList=function(){UI.draft="";UI._previewColor=null;go("new")};

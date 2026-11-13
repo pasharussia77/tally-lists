@@ -199,6 +199,9 @@ class MainActivity : Activity() {
         fun getWidgetInfo(): String = Widgets.info(this@MainActivity)
 
         @JavascriptInterface
+        fun moveSlot(from: Int, to: Int) = Widgets.moveSlot(this@MainActivity, from, to)
+
+        @JavascriptInterface
         fun restoreLayout() = Widgets.refresh(this@MainActivity)
 
         @JavascriptInterface
