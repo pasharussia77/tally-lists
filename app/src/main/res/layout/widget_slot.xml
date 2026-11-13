@@ -16,9 +16,18 @@
         <FrameLayout android:id="@+id/hdr_wrap" android:layout_width="match_parent" android:layout_height="wrap_content">
             <ImageView android:id="@+id/hdr_bg" android:layout_width="match_parent" android:layout_height="match_parent"
                 android:src="@drawable/shape_header" android:scaleType="fitXY"/>
-            <TextView android:id="@+id/title" android:layout_width="match_parent" android:layout_height="wrap_content"
-                android:padding="12dp" android:textSize="18sp" android:textStyle="bold"
-                android:maxLines="2" android:ellipsize="end"/>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                android:orientation="horizontal" android:gravity="center_vertical" android:paddingEnd="6dp">
+                <TextView android:id="@+id/title" android:layout_width="0dp" android:layout_height="wrap_content"
+                    android:layout_weight="1" android:padding="12dp" android:textSize="18sp" android:textStyle="bold"
+                    android:maxLines="2" android:ellipsize="end"/>
+                <ImageView android:id="@+id/btn_sort" android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:src="@drawable/ic_sort" android:visibility="gone"/>
+                <ImageView android:id="@+id/btn_add" android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:src="@drawable/ic_add" android:visibility="gone"/>
+                <ImageView android:id="@+id/btn_lock" android:layout_width="38dp" android:layout_height="38dp"
+                    android:padding="8dp" android:src="@drawable/ic_lock_closed" android:visibility="gone"/>
+            </LinearLayout>
         </FrameLayout>
         <TextView android:id="@+id/alarm" android:layout_width="match_parent" android:layout_height="wrap_content"
             android:layout_marginTop="6dp" android:layout_marginStart="4dp" android:textSize="13sp"

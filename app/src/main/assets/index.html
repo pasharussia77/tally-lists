@@ -165,6 +165,7 @@ var IC={
  manage:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
  gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
  check:'<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>',
+ sort:'<svg viewBox="0 0 24 24"><path d="M7 4v16M7 20l-3-3M7 20l3-3"/><path d="M17 20V4M17 4l-3 3M17 4l3 3"/></svg>',
  lock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
  unlock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>',
  bell:'<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
@@ -175,10 +176,11 @@ var IC={
  hidden:'<svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-3.2 3.7M6.6 7.6A15 15 0 0 0 3 12s4 6 9 6a9 9 0 0 0 3.4-.7"/></svg>'
 };
 function cb(on,color,id,lid){var t=textOn(color);return'<button class="cb'+(on?' on':'')+'" style="--c:'+color+';--t:'+t+((byId(lid)||{}).locked?';opacity:.55':'')+'" data-act="toggle" data-l="'+lid+'" data-i="'+id+'" aria-label="'+(on?'Uncheck':'Check')+'" aria-pressed="'+on+'">'+IC.check+'</button>'}
-function itemsHtml(l,limit){var its=l.items.filter(function(i){return !(S.settings.hideChecked&&i.done)});
+function itemsHtml(l,limit){var its=sortedItems(l).filter(function(i){return !(S.settings.hideChecked&&i.done)});
   if(!its.length)return'<div class="hint">'+(l.items.length?'All items checked.':'No items yet.')+'</div>';
   return its.slice(0,limit||999).map(function(i){return'<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span></div>'}).join("")}
 function counts(l){var d=l.items.filter(function(i){return i.done}).length;return d+" of "+l.items.length}
+function sortedItems(l){return l.sortChecked?l.items.slice().sort(function(a,b){return (a.done?1:0)-(b.done?1:0)}):l.items}
 function lockIc(on){return on?IC.lock.replace('<svg','<svg style="fill:currentColor;fill-opacity:.25"'):IC.unlock}
 function bellIc(on){return on?IC.bell.replace('<svg','<svg style="fill:currentColor"'):IC.bell}
 function fmtAlarm(ts){return new Date(ts).toLocaleString([],{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
@@ -209,8 +211,8 @@ function vNew(){
 
 function vList(){var l=byId(UI.listId);if(!l){UI.view="dash";return vDash()}
   var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1 style="overflow:hidden;text-overflow:ellipsis">'+esc(l.name)+'</h1></div>';
-  h+='<div class="wcard" style="--c:'+l.color+';--t:'+textOn(l.color)+'"><div class="whead"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span><button class="abtn" data-act="lock" data-l="'+l.id+'" aria-label="'+(l.locked?'Unlock list':'Lock list')+'" aria-pressed="'+!!l.locked+'">'+lockIc(!!l.locked)+'</button><button class="abtn" data-act="alarm" aria-label="Alarm" aria-pressed="'+!!l.alarm+'">'+bellIc(!!l.alarm)+'</button></div>'+alarmLine(l)+'<div class="wbody">';
-  h+=l.items.length?l.items.map(function(i){return'<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span>'+(l.locked?'':'<button class="x" data-act="delItem" data-l="'+l.id+'" data-i="'+i.id+'" aria-label="Delete item">×</button>')+'</div>'}).join(""):'<div class="hint">No items yet.</div>';
+  h+='<div class="wcard" style="--c:'+l.color+';--t:'+textOn(l.color)+'"><div class="whead"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span><button class="abtn" data-act="sortc" data-l="'+l.id+'" aria-label="Move checked items to the bottom" aria-pressed="'+!!l.sortChecked+'" style="opacity:'+(l.sortChecked?1:.55)+'">'+IC.sort+'</button><button class="abtn" data-act="lock" data-l="'+l.id+'" aria-label="'+(l.locked?'Unlock list':'Lock list')+'" aria-pressed="'+!!l.locked+'">'+lockIc(!!l.locked)+'</button><button class="abtn" data-act="alarm" aria-label="Alarm" aria-pressed="'+!!l.alarm+'">'+bellIc(!!l.alarm)+'</button></div>'+alarmLine(l)+'<div class="wbody">';
+  h+=l.items.length?sortedItems(l).map(function(i){return'<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span>'+(l.locked?'':'<button class="x" data-act="delItem" data-l="'+l.id+'" data-i="'+i.id+'" aria-label="Delete item">×</button>')+'</div>'}).join(""):'<div class="hint">No items yet.</div>';
   h+=(l.locked?'<div class="hint" style="margin:10px 2px 0">Locked. Tap the lock to make changes.</div>':'<div class="addrow"><input id="addin" placeholder="Add an item" aria-label="Add an item"><button class="btn fill" data-act="addItem" data-l="'+l.id+'">Add</button></div>')+'</div></div>';
   if(UI.alarmOpen)h+=alarmPanel(l);
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="toggleDone" data-l="'+l.id+'">'+(isDone(l)?'Reopen list':'Mark done')+'</button><button class="btn" data-act="colors">Change color</button><button class="btn" data-act="rename" data-l="'+l.id+'">Rename</button><button class="btn warn" data-act="delList" data-l="'+l.id+'">Delete list</button></div>';
@@ -268,6 +270,7 @@ document.addEventListener("click",function(ev){
   var GUARD={toggle:1,delItem:1,addItem:1,toggleDone:1,setColor:1,rename:1,delList:1,colors:1};
   if(l&&l.locked&&GUARD[a]){toast("This list is locked. Tap the lock to edit.");return}
   switch(a){
+   case"sortc":l.sortChecked=!l.sortChecked;save();render();break;
    case"lock":l.locked=!l.locked;save();render();toast(l.locked?"List locked":"List unlocked");break;
    case"go":go(el.dataset.v);break;
    case"new":UI.draft="";UI._previewColor=null;go("new");break;

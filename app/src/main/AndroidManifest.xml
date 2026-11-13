@@ -24,6 +24,14 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".AddItemActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:windowSoftInputMode="stateAlwaysVisible" />
+
         <receiver android:name=".SlotWidgetProvider" android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

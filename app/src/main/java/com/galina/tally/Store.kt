@@ -85,6 +85,46 @@ object Store {
         saveRaw(c, d.toString())
     }
 
+    fun isLocked(c: Context, listId: String): Boolean =
+        lists(load(c)).any { it.optString("id") == listId && it.optBoolean("locked") }
+
+    fun flip(c: Context, listId: String, key: String) {
+        val d = load(c)
+        for (l in lists(d)) if (l.optString("id") == listId) l.put(key, !l.optBoolean(key))
+        saveRaw(c, d.toString())
+    }
+
+    fun deleteItem(c: Context, listId: String, itemId: String) {
+        val d = load(c)
+        for (l in lists(d)) {
+            if (l.optString("id") != listId) continue
+            if (l.optBoolean("locked")) return
+            val its = l.optJSONArray("items") ?: continue
+            val out = JSONArray()
+            for (i in 0 until its.length()) {
+                val item = its.getJSONObject(i)
+                if (item.optString("id") != itemId) out.put(item)
+            }
+            l.put("items", out)
+        }
+        saveRaw(c, d.toString())
+    }
+
+    fun addItem(c: Context, listId: String, text: String) {
+        val d = load(c)
+        for (l in lists(d)) {
+            if (l.optString("id") != listId) continue
+            if (l.optBoolean("locked")) return
+            val its = l.optJSONArray("items") ?: JSONArray().also { l.put("items", it) }
+            its.put(JSONObject().put("id", java.lang.Long.toString(System.nanoTime(), 36)).put("text", text).put("done", false))
+            if (l.optBoolean("manualDone")) l.remove("manualDone")
+        }
+        saveRaw(c, d.toString())
+    }
+
+    fun listName(c: Context, listId: String): String =
+        lists(load(c)).firstOrNull { it.optString("id") == listId }?.optString("name") ?: "List"
+
     fun color(l: JSONObject): Int = try {
         Color.parseColor(l.optString("color", "#888888"))
     } catch (e: Exception) {

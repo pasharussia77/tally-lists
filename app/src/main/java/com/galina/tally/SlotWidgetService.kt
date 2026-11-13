@@ -18,7 +18,8 @@ class SlotWidgetService : RemoteViewsService() {
         val itemId: String?,
         val text: String,
         val done: Boolean,
-        val color: Int
+        val color: Int,
+        val locked: Boolean
     )
 
     private class Factory(private val c: Context, private val wid: Int) : RemoteViewsFactory {
@@ -40,19 +41,20 @@ class SlotWidgetService : RemoteViewsService() {
                 sl != null -> {
                     val its = sl.optJSONArray("items")
                     val col = Store.color(sl)
+                    val locked = sl.optBoolean("locked")
                     val out = ArrayList<Row>()
                     if (its != null) for (i in 0 until its.length()) {
                         val item = its.getJSONObject(i)
                         val done = item.optBoolean("done")
                         if (hide && done) continue
-                        out.add(Row(sl.optString("id"), item.optString("id"), item.optString("text"), done, col))
+                        out.add(Row(sl.optString("id"), item.optString("id"), item.optString("text"), done, col, locked))
                     }
-                    out
+                    if (sl.optBoolean("sortChecked")) out.sortedBy { it.done } else out
                 }
                 else -> slot.archive.map {
                     val ts = it.optLong("alarm", 0)
                     val label = it.optString("name") + if (ts > 0) "   \u23F0 " + Store.fmtAlarm(ts) else ""
-                    Row(it.optString("id"), null, label, false, Store.color(it))
+                    Row(it.optString("id"), null, label, false, Store.color(it), false)
                 }
             }
         }
@@ -67,6 +69,7 @@ class SlotWidgetService : RemoteViewsService() {
         private fun itemView(r: Row): RemoteViews {
             val rv = RemoteViews(c.packageName, R.layout.widget_item)
             rv.setInt(R.id.ring, "setColorFilter", r.color)
+            rv.setInt(R.id.ring, "setImageAlpha", if (r.locked) 150 else 255)
             rv.setInt(R.id.fill, "setColorFilter", r.color)
             rv.setInt(R.id.mark, "setColorFilter", Store.textOn(r.color))
             val vis = if (r.done) View.VISIBLE else View.GONE
@@ -80,6 +83,14 @@ class SlotWidgetService : RemoteViewsService() {
                 .putExtra(SlotWidgetProvider.EXTRA_LIST, r.listId)
                 .putExtra(SlotWidgetProvider.EXTRA_ITEM, r.itemId)
             rv.setOnClickFillInIntent(R.id.row_root, fill)
+            rv.setViewVisibility(R.id.del, if (r.locked) View.GONE else View.VISIBLE)
+            rv.setInt(R.id.del, "setColorFilter", c.getColor(R.color.muted))
+            rv.setOnClickFillInIntent(
+                R.id.del,
+                Intent().putExtra(SlotWidgetProvider.EXTRA_LIST, r.listId)
+                    .putExtra(SlotWidgetProvider.EXTRA_ITEM, r.itemId)
+                    .putExtra(SlotWidgetProvider.EXTRA_OP, "del")
+            )
             return rv
         }
 
