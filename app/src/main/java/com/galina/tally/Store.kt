@@ -213,13 +213,54 @@ object Store {
         saveRaw(c, d.toString())
     }
 
-    fun addItem(c: Context, listId: String, text: String) {
+    private val ABBR = setOf("mr", "mrs", "ms", "dr", "st", "vs", "etc", "jr", "sr", "inc", "co")
+    private val DASH = Regex("""^([-*\u2022\u2013\u2014]\s*|\d+[.)]\s+)""")
+    private val INTRO = Regex("""(?i)^(please\s+)?(add|adding|put|putting|append|appending)\b.*\blist\b""")
+
+    private fun sentences(t: String): List<String> {
+        val out = ArrayList<String>()
+        for (p in t.split(Regex("""(?<=[.!?])\s+"""))) {
+            val prev = out.lastOrNull()
+            if (prev != null && prev.endsWith(".")) {
+                val w = prev.trimEnd('.').split(Regex("""\s+""")).last().lowercase()
+                if (w in ABBR) {
+                    out[out.size - 1] = "$prev $p"
+                    continue
+                }
+            }
+            out.add(p)
+        }
+        return out
+    }
+
+    /** Splits dictated or typed text into separate items; a spoken "Adding to the list" intro is skipped. */
+    fun parseItems(text: String): List<String> {
+        val lines = text.split(Regex("""\r?\n""")).map { it.trim() }.filter { it.isNotEmpty() }
+        val segs = ArrayList<String>()
+        for (ln in lines) {
+            if (DASH.containsMatchIn(ln)) segs.add(ln.replace(DASH, "")) else segs.addAll(sentences(ln))
+        }
+        if (segs.isNotEmpty()) {
+            val f = segs[0]
+            val ci = f.indexOf(':')
+            if (INTRO.containsMatchIn(f) && ci > -1 && ci < f.length - 1) {
+                segs[0] = f.substring(ci + 1).trim()
+            } else if (segs.size > 1 && (f.trimEnd().endsWith(":") || INTRO.containsMatchIn(f))) {
+                segs.removeAt(0)
+            }
+        }
+        return segs.map { it.trim().trimEnd('.').trim() }.filter { it.isNotEmpty() }
+    }
+
+    fun addItems(c: Context, listId: String, texts: List<String>) {
         val d = load(c)
         for (l in lists(d)) {
             if (l.optString("id") != listId) continue
             if (l.optBoolean("locked")) return
             val its = l.optJSONArray("items") ?: JSONArray().also { l.put("items", it) }
-            its.put(JSONObject().put("id", java.lang.Long.toString(System.nanoTime(), 36)).put("text", text).put("done", false))
+            for (t in texts) {
+                its.put(JSONObject().put("id", java.lang.Long.toString(System.nanoTime(), 36)).put("text", t).put("done", false))
+            }
             if (l.optBoolean("manualDone")) l.remove("manualDone")
         }
         saveRaw(c, d.toString())

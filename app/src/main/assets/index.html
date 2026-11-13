@@ -192,6 +192,13 @@ function sentences(t){var out=[];
     if(prev&&/\.$/.test(prev)){var w=prev.replace(/\.+$/,"").split(/\s+/).pop().toLowerCase();if(ABBR[w]){out[out.length-1]=prev+" "+p;return}}
     out.push(p)});
   return out}
+var DASHRE=/^([-*•–—]\s*|\d+[.)]\s+)/,INTRORE=/^(please\s+)?(add|adding|put|putting|append|appending)\b.*\blist\b/i;
+function itemsFrom(text){var lines=text.split(/\r?\n/).map(function(s){return s.trim()}).filter(Boolean),segs=[];
+  lines.forEach(function(ln){if(DASHRE.test(ln))segs.push(ln.replace(DASHRE,""));else sentences(ln).forEach(function(s){segs.push(s)})});
+  if(segs.length){var f=segs[0],ci=f.indexOf(":");
+    if(INTRORE.test(f)&&ci>-1&&ci<f.length-1)segs[0]=f.slice(ci+1).trim();
+    else if(segs.length>1&&(/:\s*$/.test(f)||INTRORE.test(f)))segs.shift()}
+  return segs.map(function(s){return s.replace(/\.+$/,"").trim()}).filter(Boolean)}
 function parse(text){var lines=text.split(/\r?\n/).map(function(s){return s.trim()}).filter(Boolean);
   if(!lines.length)return null;
   var DASH=/^([-*•–—]\s*|\d+[.)]\s+)/,items=[];
@@ -447,7 +454,7 @@ document.addEventListener("click",function(ev){
    case"open":UI.listId=el.dataset.l;go("list");break;
    case"toggle":{var it=l.items.find(function(i){return i.id===el.dataset.i});it.done=!it.done;if(l.manualDone!==undefined&&!it.done)delete l.manualDone;save();var y=window.scrollY;render();window.scrollTo(0,y);break}
    case"delItem":l.items=l.items.filter(function(i){return i.id!==el.dataset.i});save();render();break;
-   case"addItem":{var inp=document.getElementById("addin"),t=inp.value.trim().replace(/^([-*•–—])\s*/,"");if(t){l.items.push({id:uid(),text:t,done:false});if(l.manualDone)delete l.manualDone;save();render();document.getElementById("addin").focus()}break}
+   case"addItem":{var inp=document.getElementById("addin"),its2=itemsFrom(inp.value);if(its2.length){its2.forEach(function(t){l.items.push({id:uid(),text:t,done:false})});if(l.manualDone)delete l.manualDone;save();render();document.getElementById("addin").focus()}break}
    case"toggleDone":l.manualDone=!isDone(l);save();render();break;
    case"colors":UI.showColors=!UI.showColors;render();break;
    case"setColor":l.color=el.dataset.c;save();render();break;
