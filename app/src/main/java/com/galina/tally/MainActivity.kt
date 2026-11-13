@@ -7,6 +7,11 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.net.ConnectivityManager
+import android.net.Uri
+import android.webkit.WebResourceError
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
 import android.os.Build
 import android.os.Bundle
 import android.view.inputmethod.InputMethodManager
@@ -33,6 +38,14 @@ class MainActivity : Activity() {
     private lateinit var web: WebView
     private var pageReady = false
     private var pending: Intent? = null
+    private var loadFailed = false
+    private val localUrl = "file:///android_asset/index.html"
+    private val remoteUrl: String by lazy { getString(R.string.web_url).trim() }
+
+    private fun online(): Boolean {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        return cm.activeNetwork != null
+    }
 
     private val changed = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) = reload()
@@ -56,7 +69,23 @@ class MainActivity : Activity() {
         web.settings.domStorageEnabled = true
         web.addJavascriptInterface(Bridge(), "Android")
         web.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
+                val u = request.url
+                val okHost = remoteUrl.isNotEmpty() && u.host == Uri.parse(remoteUrl).host
+                if (okHost || u.scheme == "file") return false
+                startActivity(Intent(Intent.ACTION_VIEW, u))
+                return true
+            }
+
+            override fun onReceivedError(view: WebView, request: WebResourceRequest, error: WebResourceError) {
+                if (request.isForMainFrame && !loadFailed) {
+                    loadFailed = true
+                    view.loadUrl(localUrl)
+                }
+            }
+
             override fun onPageFinished(view: WebView, url: String) {
+                if (loadFailed && url != localUrl) return
                 pageReady = true
                 pending?.let { handle(it) }
                 pending = null
@@ -83,7 +112,12 @@ class MainActivity : Activity() {
                 return true
             }
         }
-        web.loadUrl("file:///android_asset/index.html")
+        if (remoteUrl.isEmpty()) {
+            web.loadUrl(localUrl)
+        } else {
+            web.settings.cacheMode = if (online()) WebSettings.LOAD_DEFAULT else WebSettings.LOAD_CACHE_ELSE_NETWORK
+            web.loadUrl(remoteUrl)
+        }
 
         if (Build.VERSION.SDK_INT >= 33) {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
