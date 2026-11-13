@@ -98,3 +98,23 @@ class BootReceiver : BroadcastReceiver() {
         Widgets.refresh(c)
     }
 }
+
+class RelockReceiver : BroadcastReceiver() {
+    override fun onReceive(c: Context, i: Intent) {
+        if (Store.relockExpired(c)) Widgets.refresh(c)
+        schedule(c)
+    }
+
+    companion object {
+        fun schedule(c: Context) {
+            val at = Store.nextRelockAt(c)
+            val am = c.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            val pi = PendingIntent.getBroadcast(
+                c, 555, Intent(c, RelockReceiver::class.java),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
+            if (at == 0L) am.cancel(pi)
+            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at + 500, pi)
+        }
+    }
+}

@@ -39,6 +39,24 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .link{background:none;border:0;color:var(--accent);font-weight:700;cursor:pointer;padding:8px 0}
 textarea.entry{width:100%;min-height:150px;border:1px solid var(--line);border-radius:16px;background:var(--surface);color:var(--ink);font-family:inherit;font-size:17px;padding:14px;resize:vertical}
 .hint{color:var(--muted);font-size:14px;margin:8px 2px 16px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 10px}
+.chip{display:inline-flex;align-items:center;gap:2px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:2px 4px 2px 12px;font-weight:700}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.item.pick{width:100%;background:none;border:0;border-bottom:1px solid var(--line);font:inherit;color:inherit;text-align:left;cursor:pointer;padding:9px 2px}
+.item.pick .pk{width:26px;height:26px;border-radius:8px;border:2px solid var(--muted);display:grid;place-items:center;flex:none;color:var(--accent-ink)}
+.item.pick .pk svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:3.5;stroke-linecap:round;stroke-linejoin:round}
+.item.pick.picked{background:var(--line)}
+.item.pick.picked .pk{background:var(--accent);border-color:var(--accent)}
+.toolbar{position:fixed;left:0;right:0;bottom:0;z-index:15;display:flex;align-items:center;gap:8px;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));background:var(--surface);border-top:1px solid var(--line)}
+.toolbar span{flex:1;font-weight:700}
+.mrow.msel{width:100%;text-align:left;cursor:pointer;font-family:inherit;color:var(--ink);border-width:2px;padding:10px 12px}
+.mrow.msel.keep{border-color:var(--accent);background:var(--line)}
+.mrow.msel.into{border-style:dashed;border-color:var(--accent)}
+.mtag{font-weight:800;font-size:13px;border-radius:10px;padding:4px 10px;background:var(--line);flex:none}
+.mtag.keeptag{background:var(--accent);color:var(--accent-ink)}
+.sheetbg{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-height:65vh;overflow:auto;background:var(--bg);border-radius:20px 20px 0 0;padding:16px 16px calc(16px + env(safe-area-inset-bottom,0px));max-width:560px;margin:0 auto}
+.sheet b.hd{display:block;margin-bottom:10px}
 .abtn{border:0;background:none;color:inherit;display:grid;place-items:center;width:34px;height:34px;margin:-6px -8px -6px 0;cursor:pointer;padding:0;border-radius:10px}
 .abtn svg,.alarmline svg,.rowbell svg,.pinbtn svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .alarmline{display:flex;align-items:center;gap:6px;padding:6px 14px 0;color:var(--muted);font-weight:700;font-size:13px}
@@ -117,7 +135,7 @@ textarea.io{width:100%;min-height:90px;border:1px solid var(--line);border-radiu
 (function(){
 "use strict";
 var SKEY="tally-lists-v1";
-var S={lists:[],settings:{theme:"auto",slots:3,autoDone:true,hideChecked:false,dim:true,palette:"mixed",lockNew:true}};
+var S={lists:[],settings:{theme:"auto",slots:3,autoDone:true,hideChecked:false,dim:true,palette:"mixed",lockNew:true,numberDupes:true,dateDupes:true,triggers:[]}};
 var UI={view:"dash",listId:null,filter:"active",archiveOpen:null,draft:"",showColors:false};
 
 /* ---------- storage ---------- */
@@ -180,6 +198,20 @@ function itemsHtml(l,limit){var its=sortedItems(l).filter(function(i){return !(S
   if(!its.length)return'<div class="hint">'+(l.items.length?'All items checked.':'No items yet.')+'</div>';
   return its.slice(0,limit||999).map(function(i){return'<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span></div>'}).join("")}
 function counts(l){var d=l.items.filter(function(i){return i.done}).length;return d+" of "+l.items.length}
+function baseName(n){return n.replace(/,\s[A-Za-z]{3}\s\d{1,2}$/,'').replace(/\s\d+$/,'').trim().toLowerCase()}
+function dateStr(){return new Date().toLocaleDateString([],{month:"short",day:"numeric"})}
+function cap(t){return t.charAt(0).toUpperCase()+t.slice(1)}
+function dupeName(name){var b=baseName(name),n=1+S.lists.filter(function(l){return baseName(l.name)===b}).length;if(n===1)return name;
+  var out=S.settings.numberDupes?name+" "+n:name;if(S.settings.dateDupes)out+=", "+dateStr();return out}
+function resolveRules(p){var nm=p.name.toLowerCase(),trg=S.settings.triggers||[];
+  for(var i=0;i<trg.length;i++){var raw=String(trg[i]).trim(),t=raw.toLowerCase();
+    if(t&&nm.indexOf(t)>-1){var target=S.lists.find(function(l){return l.name.trim().toLowerCase()===t});
+      return{target:target||null,name:target?target.name:cap(raw)}}}
+  return{target:null,name:dupeName(p.name)}}
+function triggersHtml(){var t=S.settings.triggers||[];
+  return'<h2>Trigger words</h2><div class="hint">If a new list’s name contains one of these words, its items go into the list with that name. The list is created the first time.</div><div class="chips">'+
+  t.map(function(w,i){return'<span class="chip">'+esc(w)+'<button class="x" data-act="delTrig" data-i="'+i+'" aria-label="Remove '+esc(w)+'">×</button></span>'}).join("")+
+  '</div><div class="addrow"><input id="trigin" placeholder="Add a word, like general" aria-label="Trigger word"><button class="btn fill" data-act="addTrig">Add</button></div>'}
 function sortedItems(l){return l.sortChecked?l.items.slice().sort(function(a,b){return (a.done?1:0)-(b.done?1:0)}):l.items}
 function lockIc(on){return on?IC.lock.replace('<svg','<svg style="fill:currentColor;fill-opacity:.25"'):IC.unlock}
 function bellIc(on){return on?IC.bell.replace('<svg','<svg style="fill:currentColor"'):IC.bell}
@@ -205,29 +237,56 @@ function vNew(){
   h+='<textarea class="entry" id="entry" placeholder="Groceries:\n- Milk\n- Eggs" aria-label="List text">'+esc(UI.draft)+'</textarea>';
   h+='<div class="hint">First line is the name. Each line after it is one item.</div>';
   if(p){var c=UI._previewColor||(UI._previewColor=pickColor());
-    h+='<div class="wcard" style="--c:'+c+';--t:'+textOn(c)+'"><div class="whead">'+esc(p.name)+'</div><div class="wbody">'+(p.items.length?p.items.map(function(t){return'<div class="item"><span class="cb" style="--c:'+c+'"></span><span class="tx">'+esc(t)+'</span></div>'}).join(""):'<div class="hint">Items will show here.</div>')+'</div></div>'}
+    h+='<div class="wcard" style="--c:'+c+';--t:'+textOn(c)+'"><div class="whead">'+esc(resolveRules(p).name)+'</div><div class="wbody">'+(p.items.length?p.items.map(function(t){return'<div class="item"><span class="cb" style="--c:'+c+'"></span><span class="tx">'+esc(t)+'</span></div>'}).join(""):'<div class="hint">Items will show here.</div>')+'</div></div>'}
   h+='<button class="primary" data-act="saveNew"'+(p?'':' disabled style="opacity:.5"')+'>Save list</button>';
   return h}
 
 function vList(){var l=byId(UI.listId);if(!l){UI.view="dash";return vDash()}
+  var T=UI.tool,sel=UI.sel||[];
   var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1 style="overflow:hidden;text-overflow:ellipsis">'+esc(l.name)+'</h1></div>';
-  h+='<div class="wcard" style="--c:'+l.color+';--t:'+textOn(l.color)+'"><div class="whead"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span><button class="abtn" data-act="sortc" data-l="'+l.id+'" aria-label="Move checked items to the bottom" aria-pressed="'+!!l.sortChecked+'" style="opacity:'+(l.sortChecked?1:.55)+'">'+IC.sort+'</button><button class="abtn" data-act="lock" data-l="'+l.id+'" aria-label="'+(l.locked?'Unlock list':'Lock list')+'" aria-pressed="'+!!l.locked+'">'+lockIc(!!l.locked)+'</button><button class="abtn" data-act="alarm" aria-label="Alarm" aria-pressed="'+!!l.alarm+'">'+bellIc(!!l.alarm)+'</button></div>'+alarmLine(l)+'<div class="wbody">';
-  h+=l.items.length?sortedItems(l).map(function(i){return'<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span>'+(l.locked?'':'<button class="x" data-act="delItem" data-l="'+l.id+'" data-i="'+i.id+'" aria-label="Delete item">×</button>')+'</div>'}).join(""):'<div class="hint">No items yet.</div>';
-  h+=(l.locked?'<div class="hint" style="margin:10px 2px 0">Locked. Tap the lock to make changes.</div>':'<div class="addrow"><input id="addin" placeholder="Add an item" aria-label="Add an item"><button class="btn fill" data-act="addItem" data-l="'+l.id+'">Add</button></div>')+'</div></div>';
-  if(UI.alarmOpen)h+=alarmPanel(l);
-  h+='<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="toggleDone" data-l="'+l.id+'">'+(isDone(l)?'Reopen list':'Mark done')+'</button><button class="btn" data-act="colors">Change color</button><button class="btn" data-act="rename" data-l="'+l.id+'">Rename</button><button class="btn warn" data-act="delList" data-l="'+l.id+'">Delete list</button></div>';
-  if(UI.showColors)h+='<div class="swatches">'+pool(S.settings.palette).map(function(c){return'<button class="sw'+(c===l.color?' sel':'')+'" style="background:'+c+'" data-act="setColor" data-l="'+l.id+'" data-c="'+c+'" aria-label="Color '+c+'"></button>'}).join("")+'</div>';
+  h+='<div class="wcard" style="--c:'+l.color+';--t:'+textOn(l.color)+'"><div class="whead"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span>'+
+    '<button class="abtn" data-act="sortc" data-l="'+l.id+'" aria-label="Move checked items to the bottom" aria-pressed="'+!!l.sortChecked+'" style="opacity:'+(l.sortChecked?1:.55)+'">'+IC.sort+'</button>'+
+    '<button class="abtn" data-act="lock" data-l="'+l.id+'" aria-label="'+(l.locked?'Unlock list':'Lock list')+'" aria-pressed="'+!!l.locked+'">'+lockIc(!!l.locked)+'</button>'+
+    '<button class="abtn" data-act="alarm" aria-label="Alarm" aria-pressed="'+!!l.alarm+'">'+bellIc(!!l.alarm)+'</button></div>'+alarmLine(l)+'<div class="wbody">';
+  var its=sortedItems(l);
+  if(!its.length)h+='<div class="hint">No items yet.</div>';
+  its.forEach(function(i){
+    if(T){var on=sel.indexOf(i.id)>-1;
+      h+='<button class="item pick'+(on?' picked':'')+(i.done?' done':'')+'" data-act="pickItem" data-i="'+i.id+'" aria-pressed="'+on+'"><span class="pk">'+(on?IC.check:'')+'</span><span class="tx">'+esc(i.text)+'</span></button>'}
+    else h+='<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span></div>'});
+  if(!T)h+=l.locked?'<div class="hint" style="margin:10px 2px 0">Locked. Tap the lock to make changes.</div>':'<div class="addrow"><input id="addin" placeholder="Add an item" aria-label="Add an item"><button class="btn fill" data-act="addItem" data-l="'+l.id+'">Add</button></div>';
+  h+='</div></div>';
+  if(!T){
+    h+='<div class="tools"><button class="btn" data-act="tool" data-t="delete">Delete items</button><button class="btn" data-act="tool" data-t="copy">Copy items</button><button class="btn" data-act="tool" data-t="move">Move items</button></div>';
+    if(UI.alarmOpen)h+=alarmPanel(l);
+    h+='<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="toggleDone" data-l="'+l.id+'">'+(isDone(l)?'Reopen list':'Mark done')+'</button><button class="btn" data-act="colors">Change color</button><button class="btn" data-act="rename" data-l="'+l.id+'">Rename</button><button class="btn warn" data-act="delList" data-l="'+l.id+'">Delete list</button></div>';
+    if(UI.showColors)h+='<div class="swatches">'+pool(S.settings.palette).map(function(c){return'<button class="sw'+(c===l.color?' sel':'')+'" style="background:'+c+'" data-act="setColor" data-l="'+l.id+'" data-c="'+c+'" aria-label="Color '+c+'"></button>'}).join("")+'</div>';
+  }else{
+    var lab=T==="delete"?"Delete":T==="copy"?"Paste into…":"Move into…";
+    h+='<div class="toolbar"><span>'+sel.length+' selected</span><button class="btn" data-act="toolCancel">Cancel</button><button class="btn '+(T==="delete"?'warn':'fill')+'" data-act="toolGo">'+lab+'</button></div>';
+  }
+  if(UI.pick){
+    h+='<div class="sheetbg" data-act="pickClose"></div><div class="sheet" role="dialog" aria-label="Choose a list"><b class="hd">'+(T==="move"?"Move":"Copy")+' '+sel.length+' item'+(sel.length===1?"":"s")+' into</b>'+
+      '<button class="mrow msel" data-act="dest" data-d="new"><span class="dot" style="background:var(--accent)"></span><div class="nm"><b>New list</b></div></button>'+
+      S.lists.filter(function(x){return x.id!==l.id}).sort(function(a,b){return b.created-a.created}).map(function(x){return'<button class="mrow msel" data-act="dest" data-d="'+x.id+'"><span class="dot" style="background:'+x.color+'"></span><div class="nm"><b>'+esc(x.name)+'</b></div>'+(x.locked?'<span class="mtag">Locked</span>':'')+'</button>'}).join("")+'</div>';
+  }
   return h}
 
-function vManager(){
-  var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>List manager</h1></div>';
+function vManager(){var M=UI.merge;
+  var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>List manager</h1><button class="btn'+(M?' fill':'')+'" data-act="mergeMode">'+(M?'Cancel':'Merge')+'</button></div>';
   h+='<div class="seg">'+["active","done","all"].map(function(f){return'<button class="'+(UI.filter===f?'on':'')+'" data-act="filter" data-f="'+f+'">'+f[0].toUpperCase()+f.slice(1)+'</button>'}).join("")+'</div>';
   var ls=S.lists.filter(function(l){return UI.filter==="all"||(UI.filter==="done")===isDone(l)}).sort(function(a,b){return b.created-a.created});
   if(!ls.length)h+='<div class="empty">Nothing here.</div>';
+  else if(M)h+='<div class="hint">Tap the list that stays first. Then tap the lists to merge into it.</div>';
   else h+='<div class="legend" aria-hidden="true"><span title="Automatic">'+IC.auto+'</span><span title="Full view">'+IC.full+'</span><span title="Collapsed">'+IC.collapsed+'</span><span title="Hidden">'+IC.hidden+'</span></div>';
-  ls.forEach(function(l){h+='<div class="mrow"><span class="dot" style="background:'+l.color+'"></span><div class="nm"><b>'+esc(l.name)+'</b></div>'+(l.alarm?'<span class="rowbell" title="Alarm set">'+bellIc(true)+'</span>':'')+'<div class="opts" role="radiogroup" aria-label="View for '+esc(l.name)+'">'+
-    [["auto","Automatic"],["full","Full view"],["collapsed","Collapsed"],["hidden","Hidden"]].map(function(o){var on=l.view===o[0];return'<button class="opt" role="radio" aria-checked="'+on+'" aria-label="'+o[1]+'" data-act="setView" data-l="'+l.id+'" data-v="'+o[0]+'"><span class="box" style="'+(on?'background:var(--accent);border-color:var(--accent)':'')+'">'+IC.check.replace('<svg','<svg style="opacity:'+(on?1:0)+'"')+'</span></button>'}).join("")+'</div></div>'});
-  h+='<div class="hint">Auto: newest lists get a full slot, older ones go into the archive slot. Full and Collapsed override that. Hidden keeps the list off the widgets.</div>';
+  ls.forEach(function(l){
+    if(M){var isKeep=M.keep===l.id,isIn=M.ids.indexOf(l.id)>-1;
+      h+='<button class="mrow msel'+(isKeep?' keep':isIn?' into':'')+'" data-act="mergePick" data-l="'+l.id+'" aria-pressed="'+(isKeep||isIn)+'"><span class="dot" style="background:'+l.color+'"></span><div class="nm"><b>'+esc(l.name)+'</b></div>'+(isKeep?'<span class="mtag keeptag">Stays</span>':isIn?'<span class="mtag">Merges in</span>':'')+'</button>'}
+    else h+='<div class="mrow"><span class="dot" style="background:'+l.color+'"></span><div class="nm"><b>'+esc(l.name)+'</b></div>'+(l.alarm?'<span class="rowbell" title="Alarm set">'+bellIc(true)+'</span>':'')+'<div class="opts" role="radiogroup" aria-label="View for '+esc(l.name)+'">'+
+      [["auto","Automatic"],["full","Full view"],["collapsed","Collapsed"],["hidden","Hidden"]].map(function(o){var on=l.view===o[0];return'<button class="opt" role="radio" aria-checked="'+on+'" aria-label="'+o[1]+'" data-act="setView" data-l="'+l.id+'" data-v="'+o[0]+'"><span class="box" style="'+(on?'background:var(--accent);border-color:var(--accent)':'')+'">'+IC.check.replace('<svg','<svg style="opacity:'+(on?1:0)+'"')+'</span></button>'}).join("")+'</div></div>'});
+  if(M){var n=M.ids.length;
+    h+='<div class="toolbar"><span>'+(M.keep?(n?n+' into “'+esc(byId(M.keep).name)+'”':'Now pick the lists to merge in'):'Pick the list that stays')+'</span><button class="btn fill" data-act="mergeGo"'+(M.keep&&n?'':' disabled style="opacity:.5"')+'>Merge</button></div>'}
+  else h+='<div class="hint">Auto: newest lists get a full slot, older ones go into the archive slot. Full and Collapsed override that. Hidden keeps the list off the widgets.</div>';
   return h}
 
 function vSettings(){var s=S.settings;
@@ -239,7 +298,10 @@ function vSettings(){var s=S.settings;
   h+=tg("autoDone","Auto-mark done","A list is done when every item is checked");
   h+=tg("hideChecked","Hide checked items","Checked items disappear from widgets");
   h+=tg("dim","Dim checked items","Off keeps checked text at full strength with the strikethrough");
+  h+=tg("numberDupes","Number repeated names","Shopping list, Shopping list 2, 3…");
+  h+=tg("dateDupes","Add the date to repeated names","Shopping list 2, Nov 13");
   h+=tg("lockNew","Lock new lists","New lists start locked so they can\u2019t be changed by accident");
+  h+=triggersHtml();
   h+='<h2>Color palette</h2><div class="seg">'+[["soft","Soft"],["rich","Richer"],["mixed","Mixed"]].map(function(o){return'<button class="'+(s.palette===o[0]?'on':'')+'" data-act="palette" data-p="'+o[0]+'">'+o[1]+'</button>'}).join("")+'</div>';
   if(window.Android){h+='<h2>App updates</h2><div class="srow"><div class="lb">Version '+esc(Android.getVersion())+'<small>Download the newest version from GitHub</small></div><button class="btn" data-act="checkUpdate">Check for updates</button></div>'}
   h+='<h2>Backup</h2><textarea class="io" id="io" aria-label="Backup data">'+esc(JSON.stringify(S.lists))+'</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-act="copyBackup">Copy</button><button class="btn" data-act="restore">Restore from text</button></div>';
@@ -261,7 +323,7 @@ function render(){
   if(v==="new"){var e=document.getElementById("entry");e.focus();var n=e.value.length;e.setSelectionRange(n,n)}
   drawRing();
 }
-function go(v){UI.view=v;UI.showColors=false;UI.alarmOpen=false;window.scrollTo(0,0);render()}
+function go(v){UI.view=v;UI.showColors=false;UI.alarmOpen=false;UI.tool=null;UI.sel=[];UI.pick=false;UI.merge=null;window.scrollTo(0,0);render()}
 
 /* ---------- events ---------- */
 document.addEventListener("click",function(ev){
@@ -270,12 +332,43 @@ document.addEventListener("click",function(ev){
   var GUARD={toggle:1,delItem:1,addItem:1,toggleDone:1,setColor:1,rename:1,delList:1,colors:1};
   if(l&&l.locked&&GUARD[a]){toast("This list is locked. Tap the lock to edit.");return}
   switch(a){
+   case"addTrig":{var tw=(document.getElementById("trigin").value||"").trim();var tl=S.settings.triggers||(S.settings.triggers=[]);
+     if(!tw){break}if(tl.some(function(x){return String(x).toLowerCase()===tw.toLowerCase()})){toast("That word is already in the list");break}
+     tl.push(tw);save();render();break}
+   case"delTrig":S.settings.triggers.splice(Number(el.dataset.i),1);save();render();break;
+   case"tool":{var cl=byId(UI.listId),tt=el.dataset.t;
+     if(cl.locked&&(tt==="delete"||tt==="move")){toast("This list is locked. Tap the lock to edit.");break}
+     UI.tool=tt;UI.sel=[];UI.pick=false;render();break}
+   case"toolCancel":UI.tool=null;UI.sel=[];UI.pick=false;render();break;
+   case"pickItem":{var ix=UI.sel.indexOf(el.dataset.i);if(ix>-1)UI.sel.splice(ix,1);else UI.sel.push(el.dataset.i);var yy=window.scrollY;render();window.scrollTo(0,yy);break}
+   case"toolGo":{if(!UI.sel.length){toast("Select items first");break}var cl2=byId(UI.listId);
+     if(UI.tool==="delete"){var cnt=UI.sel.length;cl2.items=cl2.items.filter(function(i){return UI.sel.indexOf(i.id)<0});save();toast("Deleted "+cnt+" item"+(cnt===1?"":"s"));UI.tool=null;UI.sel=[];render()}
+     else{UI.pick=true;render()}break}
+   case"pickClose":UI.pick=false;render();break;
+   case"dest":{var src=byId(UI.listId),chosen=src.items.filter(function(i){return UI.sel.indexOf(i.id)>-1}),dd=el.dataset.d,dl;
+     if(dd==="new"){var nn=prompt("Name for the new list","New list");if(!nn||!nn.trim())break;
+       dl={id:uid(),name:dupeName(nn.trim()),color:pickColor(),created:Date.now(),view:"auto",locked:!!S.settings.lockNew,items:[]};S.lists.push(dl)}
+     else dl=byId(dd);
+     chosen.forEach(function(i){dl.items.push({id:uid(),text:i.text,done:i.done})});delete dl.manualDone;
+     if(UI.tool==="move")src.items=src.items.filter(function(i){return UI.sel.indexOf(i.id)<0});
+     save();toast((UI.tool==="move"?"Moved ":"Copied ")+chosen.length+" to "+dl.name);UI.tool=null;UI.sel=[];UI.pick=false;render();break}
+   case"mergeMode":UI.merge=UI.merge?null:{keep:null,ids:[]};render();break;
+   case"mergePick":{var M=UI.merge,id2=el.dataset.l;
+     if(!M.keep)M.keep=id2;else if(id2===M.keep)M.keep=M.ids.shift()||null;
+     else{var k2=M.ids.indexOf(id2);if(k2>-1)M.ids.splice(k2,1);else M.ids.push(id2)}
+     render();break}
+   case"mergeGo":{var M2=UI.merge;if(!M2||!M2.keep||!M2.ids.length)break;var kp=byId(M2.keep);
+     if(!confirm("Merge "+M2.ids.length+" list"+(M2.ids.length===1?"":"s")+" into “"+kp.name+"”? The merged lists will be removed."))break;
+     M2.ids.forEach(function(id){var s=byId(id);if(!s)return;s.items.forEach(function(i){kp.items.push({id:uid(),text:i.text,done:i.done})})});
+     delete kp.manualDone;S.lists=S.lists.filter(function(x){return M2.ids.indexOf(x.id)<0});save();UI.merge=null;toast("Lists merged");render();break}
    case"sortc":l.sortChecked=!l.sortChecked;save();render();break;
-   case"lock":l.locked=!l.locked;save();render();toast(l.locked?"List locked":"List unlocked");break;
+   case"lock":l.locked=!l.locked;delete l.unlockedAt;save();render();toast(l.locked?"List locked":"List unlocked");break;
    case"go":go(el.dataset.v);break;
    case"new":UI.draft="";UI._previewColor=null;go("new");break;
-   case"saveNew":{var p=parse(UI.draft);if(!p)break;var c=UI._previewColor||pickColor();
-     S.lists.push({id:uid(),name:p.name,color:c,created:Date.now(),view:"auto",locked:!!S.settings.lockNew,items:p.items.map(function(t){return{id:uid(),text:t,done:false}})});
+   case"saveNew":{var p=parse(UI.draft);if(!p)break;var rr=resolveRules(p);
+     if(rr.target){p.items.forEach(function(t){rr.target.items.push({id:uid(),text:t,done:false})});delete rr.target.manualDone;save();UI.draft="";UI._previewColor=null;go("dash");toast("Added "+p.items.length+" item"+(p.items.length===1?"":"s")+" to "+rr.target.name);break}
+     var c=UI._previewColor||pickColor();
+     S.lists.push({id:uid(),name:rr.name,color:c,created:Date.now(),view:"auto",locked:!!S.settings.lockNew,items:p.items.map(function(t){return{id:uid(),text:t,done:false}})});
      save();UI.draft="";UI._previewColor=null;go("dash");toast("List saved");break}
    case"open":UI.listId=el.dataset.l;go("list");break;
    case"toggle":{var it=l.items.find(function(i){return i.id===el.dataset.i});it.done=!it.done;if(l.manualDone!==undefined&&!it.done)delete l.manualDone;save();var y=window.scrollY;render();window.scrollTo(0,y);break}
@@ -326,7 +419,7 @@ document.addEventListener("input",function(ev){
     var host=document.querySelector(".hint");
     if(p){var c=UI._previewColor||(UI._previewColor=pickColor());
       var d=document.createElement("div");d.className="wcard";d.style.cssText="--c:"+c+";--t:"+textOn(c);
-      d.innerHTML='<div class="whead">'+esc(p.name)+'</div><div class="wbody">'+(p.items.length?p.items.map(function(t){return'<div class="item"><span class="cb" style="--c:'+c+'"></span><span class="tx">'+esc(t)+'</span></div>'}).join(""):'<div class="hint">Items will show here.</div>')+'</div>';
+      d.innerHTML='<div class="whead">'+esc(resolveRules(p).name)+'</div><div class="wbody">'+(p.items.length?p.items.map(function(t){return'<div class="item"><span class="cb" style="--c:'+c+'"></span><span class="tx">'+esc(t)+'</span></div>'}).join(""):'<div class="hint">Items will show here.</div>')+'</div>';
       host.insertAdjacentElement("afterend",d)}
     btn.disabled=!p;btn.style.opacity=p?1:.5}
 });
@@ -347,7 +440,7 @@ function syncSlots(){if(window.Android){try{S.settings.slots=Math.max(2,Android.
 window.__reload=function(){try{var r=Android.getData();if(!r)return;var d=JSON.parse(r);S.lists=d.lists||[];S.settings=Object.assign(S.settings,d.settings||{});syncSlots();render()}catch(e){}};
 window.__newList=function(){UI.draft="";UI._previewColor=null;go("new")};
 window.__openList=function(id){if(byId(id)){UI.listId=id;go("list")}};
-window.__back=function(){if(UI.view!=="dash"){go("dash");return true}return false};
+window.__back=function(){if(UI.pick){UI.pick=false;render();return true}if(UI.tool||UI.merge){UI.tool=null;UI.sel=[];UI.merge=null;render();return true}if(UI.view!=="dash"){go("dash");return true}return false};
 load();
 syncSlots();
 if(!S.lists.length&&!window.Android){var c1=pickColor();S.lists.push({id:uid(),name:"Staple gun errands",color:c1,created:Date.now(),view:"auto",items:[{id:uid(),text:"Staple gun",done:false},{id:uid(),text:"Call my dad",done:true},{id:uid(),text:"Work till 7:00",done:false}]})}

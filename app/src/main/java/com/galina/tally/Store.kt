@@ -85,7 +85,58 @@ object Store {
         saveRaw(c, d.toString())
     }
 
-    fun isLocked(c: Context, listId: String): Boolean =
+    const val RELOCK_MS = 120_000L
+
+    /** Lists unlocked from a widget lock themselves again after two minutes. */
+    fun relockExpired(c: Context): Boolean {
+        val d = load(c)
+        val now = System.currentTimeMillis()
+        var changed = false
+        for (l in lists(d)) {
+            val t = l.optLong("unlockedAt", 0)
+            if (t > 0 && now - t >= RELOCK_MS) {
+                l.put("locked", true)
+                l.remove("unlockedAt")
+                changed = true
+            }
+        }
+        if (changed) saveRaw(c, d.toString())
+        return changed
+    }
+
+    fun widgetLockToggle(c: Context, listId: String) {
+        val d = load(c)
+        for (l in lists(d)) {
+            if (l.optString("id") != listId) continue
+            if (l.optBoolean("locked")) {
+                l.put("locked", false)
+                l.put("unlockedAt", System.currentTimeMillis())
+            } else {
+                l.put("locked", true)
+                l.remove("unlockedAt")
+            }
+        }
+        saveRaw(c, d.toString())
+    }
+
+    fun nextRelockAt(c: Context): Long {
+        var best = 0L
+        for (l in lists(load(c))) {
+            val t = l.optLong("unlockedAt", 0)
+            if (t > 0 && !l.optBoolean("locked")) {
+                val at = t + RELOCK_MS
+                if (best == 0L || at < best) best = at
+            }
+        }
+        return best
+    }
+
+    fun isLocked(c: Context, listId: String): Boolean {
+        relockExpired(c)
+        return isLockedRaw(c, listId)
+    }
+
+    private fun isLockedRaw(c: Context, listId: String): Boolean =
         lists(load(c)).any { it.optString("id") == listId && it.optBoolean("locked") }
 
     fun flip(c: Context, listId: String, key: String) {

@@ -29,7 +29,7 @@ class SlotWidgetProvider : AppWidgetProvider() {
                 if (i.getStringExtra(EXTRA_OP) == "del") Store.deleteItem(c, l, item) else Store.toggle(c, l, item)
                 Widgets.refresh(c)
             }
-            ACTION_LOCK -> if (l != null) { Store.flip(c, l, "locked"); Widgets.refresh(c) }
+            ACTION_LOCK -> if (l != null) { Store.widgetLockToggle(c, l); RelockReceiver.schedule(c); Widgets.refresh(c) }
             ACTION_SORT -> if (l != null) { Store.flip(c, l, "sortChecked"); Widgets.refresh(c) }
             else -> super.onReceive(c, i)
         }
@@ -44,6 +44,7 @@ class SlotWidgetProvider : AppWidgetProvider() {
         const val EXTRA_OP = "op"
 
         fun updateAll(c: Context) {
+            Store.relockExpired(c)
             val m = AppWidgetManager.getInstance(c)
             val ids = Widgets.slotIds(c)
             ids.forEach { m.updateAppWidget(it, build(c, it)) }
@@ -90,18 +91,25 @@ class SlotWidgetProvider : AppWidgetProvider() {
             rv.setViewVisibility(R.id.alarm, if (alarmTxt.isEmpty()) View.GONE else View.VISIBLE)
 
             val showBtns = list != null
-            for (b in listOf(R.id.btn_sort, R.id.btn_lock, R.id.btn_add)) {
+            for (b in listOf(R.id.btn_sort, R.id.btn_lock, R.id.btn_add, R.id.btn_open)) {
                 rv.setInt(b, "setColorFilter", tc)
             }
             rv.setViewVisibility(R.id.btn_sort, if (showBtns) View.VISIBLE else View.GONE)
             rv.setViewVisibility(R.id.btn_lock, if (showBtns) View.VISIBLE else View.GONE)
             rv.setViewVisibility(R.id.btn_add, if (showBtns && !locked) View.VISIBLE else View.GONE)
+            rv.setViewVisibility(R.id.btn_open, if (showBtns) View.VISIBLE else View.GONE)
             if (list != null) {
                 val lid = list.optString("id")
                 rv.setImageViewResource(R.id.btn_lock, if (locked) R.drawable.ic_lock_closed else R.drawable.ic_lock_open)
                 rv.setInt(R.id.btn_sort, "setImageAlpha", if (list.optBoolean("sortChecked")) 255 else 110)
                 rv.setOnClickPendingIntent(R.id.btn_lock, bcast(c, id, 5, ACTION_LOCK, lid))
                 rv.setOnClickPendingIntent(R.id.btn_sort, bcast(c, id, 4, ACTION_SORT, lid))
+                val open = Intent(c, MainActivity::class.java).setAction(MainActivity.ACTION_OPEN)
+                    .putExtra(MainActivity.EXTRA_LIST, lid)
+                rv.setOnClickPendingIntent(
+                    R.id.btn_open,
+                    PendingIntent.getActivity(c, id * 10 + 1, open, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+                )
                 val add = Intent(c, AddItemActivity::class.java).putExtra(EXTRA_LIST, lid)
                 rv.setOnClickPendingIntent(
                     R.id.btn_add,

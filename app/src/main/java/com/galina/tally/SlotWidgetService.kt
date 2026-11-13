@@ -83,14 +83,6 @@ class SlotWidgetService : RemoteViewsService() {
                 .putExtra(SlotWidgetProvider.EXTRA_LIST, r.listId)
                 .putExtra(SlotWidgetProvider.EXTRA_ITEM, r.itemId)
             rv.setOnClickFillInIntent(R.id.row_root, fill)
-            rv.setViewVisibility(R.id.del, if (r.locked) View.GONE else View.VISIBLE)
-            rv.setInt(R.id.del, "setColorFilter", c.getColor(R.color.muted))
-            rv.setOnClickFillInIntent(
-                R.id.del,
-                Intent().putExtra(SlotWidgetProvider.EXTRA_LIST, r.listId)
-                    .putExtra(SlotWidgetProvider.EXTRA_ITEM, r.itemId)
-                    .putExtra(SlotWidgetProvider.EXTRA_OP, "del")
-            )
             return rv
         }
 

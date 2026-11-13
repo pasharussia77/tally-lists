@@ -21,12 +21,14 @@
                 <TextView android:id="@+id/title" android:layout_width="0dp" android:layout_height="wrap_content"
                     android:layout_weight="1" android:padding="12dp" android:textSize="18sp" android:textStyle="bold"
                     android:maxLines="2" android:ellipsize="end"/>
-                <ImageView android:id="@+id/btn_sort" android:layout_width="38dp" android:layout_height="38dp"
-                    android:padding="8dp" android:src="@drawable/ic_sort" android:visibility="gone"/>
-                <ImageView android:id="@+id/btn_add" android:layout_width="38dp" android:layout_height="38dp"
-                    android:padding="8dp" android:src="@drawable/ic_add" android:visibility="gone"/>
-                <ImageView android:id="@+id/btn_lock" android:layout_width="38dp" android:layout_height="38dp"
-                    android:padding="8dp" android:src="@drawable/ic_lock_closed" android:visibility="gone"/>
+                <ImageView android:id="@+id/btn_open" android:layout_width="34dp" android:layout_height="34dp"
+                    android:padding="7dp" android:src="@drawable/ic_open" android:visibility="gone"/>
+                <ImageView android:id="@+id/btn_sort" android:layout_width="34dp" android:layout_height="34dp"
+                    android:padding="7dp" android:src="@drawable/ic_sort" android:visibility="gone"/>
+                <ImageView android:id="@+id/btn_add" android:layout_width="34dp" android:layout_height="34dp"
+                    android:padding="7dp" android:src="@drawable/ic_add" android:visibility="gone"/>
+                <ImageView android:id="@+id/btn_lock" android:layout_width="34dp" android:layout_height="34dp"
+                    android:padding="7dp" android:src="@drawable/ic_lock_closed" android:visibility="gone"/>
             </LinearLayout>
         </FrameLayout>
         <TextView android:id="@+id/alarm" android:layout_width="match_parent" android:layout_height="wrap_content"
