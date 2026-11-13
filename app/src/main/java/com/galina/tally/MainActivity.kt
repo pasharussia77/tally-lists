@@ -123,6 +123,7 @@ class MainActivity : Activity() {
             requestPermissions(arrayOf(Manifest.permission.POST_NOTIFICATIONS), 1)
         }
         pending = intent
+        Updater.check(this, false)
     }
 
     override fun onNewIntent(i: Intent) {
@@ -187,6 +188,12 @@ class MainActivity : Activity() {
             AlarmScheduler.sync(this@MainActivity)
             SlotWidgetProvider.updateAll(this@MainActivity)
         }
+
+        @JavascriptInterface
+        fun checkUpdate() = Updater.check(this@MainActivity, true)
+
+        @JavascriptInterface
+        fun getVersion(): String = Updater.versionName(this@MainActivity)
 
         @JavascriptInterface
         fun getSlotCount(): Int = Widgets.slotIds(this@MainActivity).size

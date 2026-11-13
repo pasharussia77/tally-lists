@@ -235,6 +235,7 @@ function vSettings(){var s=S.settings;
   h+=tg("hideChecked","Hide checked items","Checked items disappear from widgets");
   h+=tg("dim","Dim checked items","Off keeps checked text at full strength with the strikethrough");
   h+='<h2>Color palette</h2><div class="seg">'+[["soft","Soft"],["rich","Richer"],["mixed","Mixed"]].map(function(o){return'<button class="'+(s.palette===o[0]?'on':'')+'" data-act="palette" data-p="'+o[0]+'">'+o[1]+'</button>'}).join("")+'</div>';
+  if(window.Android){h+='<h2>App updates</h2><div class="srow"><div class="lb">Version '+esc(Android.getVersion())+'<small>Download the newest version from GitHub</small></div><button class="btn" data-act="checkUpdate">Check for updates</button></div>'}
   h+='<h2>Backup</h2><textarea class="io" id="io" aria-label="Backup data">'+esc(JSON.stringify(S.lists))+'</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-act="copyBackup">Copy</button><button class="btn" data-act="restore">Restore from text</button></div>';
   return h}
 
@@ -279,6 +280,7 @@ document.addEventListener("click",function(ev){
      if(v==="full"){var others=S.lists.filter(function(x){return x.view==="full"&&x!==l}).length;
        if(others>=pinLimit()){toast("All pin spots are in use. Free one first, or add slot widgets.");break}}
      l.view=v;save();render();break}
+   case"checkUpdate":Android.checkUpdate();break;
    case"pin":l.pinned=!l.pinned;save();render();break;
    case"alarm":UI.alarmOpen=!UI.alarmOpen;render();break;
    case"saveAlarm":{var av=document.getElementById("alarmin").value,ats=new Date(av).getTime();
