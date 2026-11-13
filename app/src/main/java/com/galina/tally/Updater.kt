@@ -13,9 +13,9 @@ import java.io.File
 import java.net.HttpURLConnection
 import java.net.URL
 
-/** Checks the public tally-updates repo for a newer build and installs it. */
+/** Checks the public tally-lists repo for a newer build and installs it. */
 object Updater {
-    private const val API = "https://api.github.com/repos/pasharussia77/tally-updates/releases/latest"
+    private const val API = "https://api.github.com/repos/pasharussia77/tally-lists/releases/latest"
 
     fun currentBuild(c: Context): Long =
         c.packageManager.getPackageInfo(c.packageName, 0).longVersionCode
