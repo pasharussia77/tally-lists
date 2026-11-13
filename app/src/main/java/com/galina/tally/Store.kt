@@ -71,6 +71,7 @@ object Store {
         val d = load(c)
         for (l in lists(d)) {
             if (l.optString("id") != listId) continue
+            if (l.optBoolean("locked")) return
             val its = l.optJSONArray("items") ?: continue
             for (i in 0 until its.length()) {
                 val item = its.getJSONObject(i)

@@ -50,7 +50,7 @@ class SlotWidgetProvider : AppWidgetProvider() {
             when {
                 list != null -> {
                     col = Store.color(list)
-                    title = list.optString("name")
+                    title = (if (list.optBoolean("locked")) "\uD83D\uDD12 " else "") + list.optString("name")
                     openId = list.optString("id")
                     val ts = list.optLong("alarm", 0)
                     if (ts > 0) alarmTxt = "\u23F0 " + Store.fmtAlarm(ts)
@@ -59,6 +59,8 @@ class SlotWidgetProvider : AppWidgetProvider() {
                 else -> { col = gray; title = "Empty slot" }
             }
             val empty = slot == null
+            rv.setViewVisibility(R.id.slot_num, if (empty) View.VISIBLE else View.GONE)
+            if (empty) rv.setTextViewText(R.id.slot_num, (Widgets.slotIds(c).indexOf(id) + 1).toString())
             rv.setViewVisibility(R.id.outline, if (empty) View.VISIBLE else View.GONE)
             rv.setViewVisibility(R.id.frame, if (empty) View.GONE else View.VISIBLE)
             rv.setViewVisibility(R.id.inner_bg, if (empty) View.GONE else View.VISIBLE)

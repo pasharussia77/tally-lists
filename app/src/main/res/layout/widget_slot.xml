@@ -3,6 +3,10 @@
     android:layout_width="match_parent" android:layout_height="match_parent">
     <ImageView android:id="@+id/outline" android:layout_width="match_parent" android:layout_height="match_parent"
         android:src="@drawable/shape_outline" android:scaleType="fitXY" android:visibility="gone"/>
+    <TextView android:id="@+id/slot_num" android:layout_width="28dp" android:layout_height="28dp"
+        android:layout_margin="12dp" android:layout_gravity="top|start" android:gravity="center"
+        android:background="@drawable/shape_badge" android:textColor="#FFFFFF" android:textSize="14sp"
+        android:textStyle="bold" android:includeFontPadding="false" android:visibility="gone"/>
     <ImageView android:id="@+id/frame" android:layout_width="match_parent" android:layout_height="match_parent"
         android:src="@drawable/shape_card" android:scaleType="fitXY"/>
     <ImageView android:id="@+id/inner_bg" android:layout_width="match_parent" android:layout_height="match_parent"

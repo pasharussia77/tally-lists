@@ -117,7 +117,7 @@ textarea.io{width:100%;min-height:90px;border:1px solid var(--line);border-radiu
 (function(){
 "use strict";
 var SKEY="tally-lists-v1";
-var S={lists:[],settings:{theme:"auto",slots:3,autoDone:true,hideChecked:false,dim:true,palette:"mixed"}};
+var S={lists:[],settings:{theme:"auto",slots:3,autoDone:true,hideChecked:false,dim:true,palette:"mixed",lockNew:true}};
 var UI={view:"dash",listId:null,filter:"active",archiveOpen:null,draft:"",showColors:false};
 
 /* ---------- storage ---------- */
@@ -165,6 +165,8 @@ var IC={
  manage:'<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
  gear:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
  check:'<svg viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>',
+ lock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+ unlock:'<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 7.5-2"/></svg>',
  bell:'<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
  pin:'<svg viewBox="0 0 24 24"><path d="M12 17v5"/><path d="M9 3h6l-1 6 3 3v2H7v-2l3-3z"/></svg>',
  auto:'<svg viewBox="0 0 24 24"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M19 15l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7z"/></svg>',
@@ -172,11 +174,12 @@ var IC={
  collapsed:'<svg viewBox="0 0 24 24"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>',
  hidden:'<svg viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M10.6 6.1A9.8 9.8 0 0 1 12 6c5 0 9 6 9 6a15 15 0 0 1-3.2 3.7M6.6 7.6A15 15 0 0 0 3 12s4 6 9 6a9 9 0 0 0 3.4-.7"/></svg>'
 };
-function cb(on,color,id,lid){var t=textOn(color);return'<button class="cb'+(on?' on':'')+'" style="--c:'+color+';--t:'+t+'" data-act="toggle" data-l="'+lid+'" data-i="'+id+'" aria-label="'+(on?'Uncheck':'Check')+'" aria-pressed="'+on+'">'+IC.check+'</button>'}
+function cb(on,color,id,lid){var t=textOn(color);return'<button class="cb'+(on?' on':'')+'" style="--c:'+color+';--t:'+t+((byId(lid)||{}).locked?';opacity:.55':'')+'" data-act="toggle" data-l="'+lid+'" data-i="'+id+'" aria-label="'+(on?'Uncheck':'Check')+'" aria-pressed="'+on+'">'+IC.check+'</button>'}
 function itemsHtml(l,limit){var its=l.items.filter(function(i){return !(S.settings.hideChecked&&i.done)});
   if(!its.length)return'<div class="hint">'+(l.items.length?'All items checked.':'No items yet.')+'</div>';
   return its.slice(0,limit||999).map(function(i){return'<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span></div>'}).join("")}
 function counts(l){var d=l.items.filter(function(i){return i.done}).length;return d+" of "+l.items.length}
+function lockIc(on){return on?IC.lock.replace('<svg','<svg style="fill:currentColor;fill-opacity:.25"'):IC.unlock}
 function bellIc(on){return on?IC.bell.replace('<svg','<svg style="fill:currentColor"'):IC.bell}
 function fmtAlarm(ts){return new Date(ts).toLocaleString([],{weekday:"short",month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})}
 function alarmLine(l){return l.alarm?'<div class="alarmline">'+bellIc(true)+'<span>'+fmtAlarm(l.alarm)+'</span></div>':''}
@@ -206,9 +209,9 @@ function vNew(){
 
 function vList(){var l=byId(UI.listId);if(!l){UI.view="dash";return vDash()}
   var h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1 style="overflow:hidden;text-overflow:ellipsis">'+esc(l.name)+'</h1></div>';
-  h+='<div class="wcard" style="--c:'+l.color+';--t:'+textOn(l.color)+'"><div class="whead"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span><button class="abtn" data-act="alarm" aria-label="Alarm" aria-pressed="'+!!l.alarm+'">'+bellIc(!!l.alarm)+'</button></div>'+alarmLine(l)+'<div class="wbody">';
-  h+=l.items.length?l.items.map(function(i){return'<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span><button class="x" data-act="delItem" data-l="'+l.id+'" data-i="'+i.id+'" aria-label="Delete item">×</button></div>'}).join(""):'<div class="hint">No items yet.</div>';
-  h+='<div class="addrow"><input id="addin" placeholder="Add an item" aria-label="Add an item"><button class="btn fill" data-act="addItem" data-l="'+l.id+'">Add</button></div></div></div>';
+  h+='<div class="wcard" style="--c:'+l.color+';--t:'+textOn(l.color)+'"><div class="whead"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span><button class="abtn" data-act="lock" data-l="'+l.id+'" aria-label="'+(l.locked?'Unlock list':'Lock list')+'" aria-pressed="'+!!l.locked+'">'+lockIc(!!l.locked)+'</button><button class="abtn" data-act="alarm" aria-label="Alarm" aria-pressed="'+!!l.alarm+'">'+bellIc(!!l.alarm)+'</button></div>'+alarmLine(l)+'<div class="wbody">';
+  h+=l.items.length?l.items.map(function(i){return'<div class="item'+(i.done?' done':'')+(S.settings.dim?'':' nodim')+'">'+cb(i.done,l.color,i.id,l.id)+'<span class="tx">'+esc(i.text)+'</span>'+(l.locked?'':'<button class="x" data-act="delItem" data-l="'+l.id+'" data-i="'+i.id+'" aria-label="Delete item">×</button>')+'</div>'}).join(""):'<div class="hint">No items yet.</div>';
+  h+=(l.locked?'<div class="hint" style="margin:10px 2px 0">Locked. Tap the lock to make changes.</div>':'<div class="addrow"><input id="addin" placeholder="Add an item" aria-label="Add an item"><button class="btn fill" data-act="addItem" data-l="'+l.id+'">Add</button></div>')+'</div></div>';
   if(UI.alarmOpen)h+=alarmPanel(l);
   h+='<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="toggleDone" data-l="'+l.id+'">'+(isDone(l)?'Reopen list':'Mark done')+'</button><button class="btn" data-act="colors">Change color</button><button class="btn" data-act="rename" data-l="'+l.id+'">Rename</button><button class="btn warn" data-act="delList" data-l="'+l.id+'">Delete list</button></div>';
   if(UI.showColors)h+='<div class="swatches">'+pool(S.settings.palette).map(function(c){return'<button class="sw'+(c===l.color?' sel':'')+'" style="background:'+c+'" data-act="setColor" data-l="'+l.id+'" data-c="'+c+'" aria-label="Color '+c+'"></button>'}).join("")+'</div>';
@@ -234,12 +237,13 @@ function vSettings(){var s=S.settings;
   h+=tg("autoDone","Auto-mark done","A list is done when every item is checked");
   h+=tg("hideChecked","Hide checked items","Checked items disappear from widgets");
   h+=tg("dim","Dim checked items","Off keeps checked text at full strength with the strikethrough");
+  h+=tg("lockNew","Lock new lists","New lists start locked so they can\u2019t be changed by accident");
   h+='<h2>Color palette</h2><div class="seg">'+[["soft","Soft"],["rich","Richer"],["mixed","Mixed"]].map(function(o){return'<button class="'+(s.palette===o[0]?'on':'')+'" data-act="palette" data-p="'+o[0]+'">'+o[1]+'</button>'}).join("")+'</div>';
   if(window.Android){h+='<h2>App updates</h2><div class="srow"><div class="lb">Version '+esc(Android.getVersion())+'<small>Download the newest version from GitHub</small></div><button class="btn" data-act="checkUpdate">Check for updates</button></div>'}
   h+='<h2>Backup</h2><textarea class="io" id="io" aria-label="Backup data">'+esc(JSON.stringify(S.lists))+'</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-act="copyBackup">Copy</button><button class="btn" data-act="restore">Restore from text</button></div>';
   return h}
 
-function slotCard(l){var c=l.color,t=textOn(c);return'<div class="wcard" style="--c:'+c+';--t:'+t+'"><button class="whead" style="border:0;width:100%;text-align:left;font-family:inherit" data-act="open" data-l="'+l.id+'"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span>'+(l.alarm?'<span class="abtn" style="pointer-events:none">'+bellIc(true)+'</span>':'')+'</button>'+alarmLine(l)+'<div class="wbody">'+itemsHtml(l)+'</div></div>'}
+function slotCard(l){var c=l.color,t=textOn(c);return'<div class="wcard" style="--c:'+c+';--t:'+t+'"><button class="whead" style="border:0;width:100%;text-align:left;font-family:inherit" data-act="open" data-l="'+l.id+'"><span>'+esc(l.name)+'</span><span class="sp"></span><span class="cnt">'+counts(l)+'</span>'+(l.locked?'<span class="abtn" style="pointer-events:none">'+lockIc(true)+'</span>':'')+(l.alarm?'<span class="abtn" style="pointer-events:none">'+bellIc(true)+'</span>':'')+'</button>'+alarmLine(l)+'<div class="wbody">'+itemsHtml(l)+'</div></div>'}
 function vHome(){var L=layout(),N=S.settings.slots,h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>Home screen slots</h1></div><div class="hint">A preview of what each blank widget shows on your phone.</div>';
   var n=0,total=L.full.length+(L.archive.length?1:0);
   L.full.forEach(function(l){n++;h+='<div class="slotlabel">Slot '+n+'</div>'+slotCard(l)});
@@ -261,11 +265,14 @@ function go(v){UI.view=v;UI.showColors=false;UI.alarmOpen=false;window.scrollTo(
 document.addEventListener("click",function(ev){
   var el=ev.target.closest("[data-act]");if(!el||el.tagName==="SELECT")return;
   var a=el.dataset.act,l=el.dataset.l?byId(el.dataset.l):null;
+  var GUARD={toggle:1,delItem:1,addItem:1,toggleDone:1,setColor:1,rename:1,delList:1,colors:1};
+  if(l&&l.locked&&GUARD[a]){toast("This list is locked. Tap the lock to edit.");return}
   switch(a){
+   case"lock":l.locked=!l.locked;save();render();toast(l.locked?"List locked":"List unlocked");break;
    case"go":go(el.dataset.v);break;
    case"new":UI.draft="";UI._previewColor=null;go("new");break;
    case"saveNew":{var p=parse(UI.draft);if(!p)break;var c=UI._previewColor||pickColor();
-     S.lists.push({id:uid(),name:p.name,color:c,created:Date.now(),view:"auto",items:p.items.map(function(t){return{id:uid(),text:t,done:false}})});
+     S.lists.push({id:uid(),name:p.name,color:c,created:Date.now(),view:"auto",locked:!!S.settings.lockNew,items:p.items.map(function(t){return{id:uid(),text:t,done:false}})});
      save();UI.draft="";UI._previewColor=null;go("dash");toast("List saved");break}
    case"open":UI.listId=el.dataset.l;go("list");break;
    case"toggle":{var it=l.items.find(function(i){return i.id===el.dataset.i});it.done=!it.done;if(l.manualDone!==undefined&&!it.done)delete l.manualDone;save();var y=window.scrollY;render();window.scrollTo(0,y);break}
