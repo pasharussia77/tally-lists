@@ -186,9 +186,20 @@ function pickColor(){var used=S.lists.filter(function(l){return !isDone(l)}).map
 /* ---------- list logic ---------- */
 function allChecked(l){return l.items.length>0&&l.items.every(function(i){return i.done})}
 function isDone(l){if(l.manualDone!==undefined)return l.manualDone;return S.settings.autoDone&&allChecked(l)}
+var ABBR={mr:1,mrs:1,ms:1,dr:1,st:1,vs:1,etc:1,jr:1,sr:1,inc:1,co:1};
+function sentences(t){var out=[];
+  t.split(/(?<=[.!?])\s+/).forEach(function(p){var prev=out[out.length-1];
+    if(prev&&/\.$/.test(prev)){var w=prev.replace(/\.+$/,"").split(/\s+/).pop().toLowerCase();if(ABBR[w]){out[out.length-1]=prev+" "+p;return}}
+    out.push(p)});
+  return out}
 function parse(text){var lines=text.split(/\r?\n/).map(function(s){return s.trim()}).filter(Boolean);
-  if(!lines.length)return null;var name=lines[0].replace(/:\s*$/,"").replace(/^#+\s*/,"").trim();
-  var items=lines.slice(1).map(function(s){return s.replace(/^([-*•–—]|\d+[.)])\s*/,"").trim()}).filter(Boolean);
+  if(!lines.length)return null;
+  var DASH=/^([-*•–—]\s*|\d+[.)]\s+)/,items=[];
+  function add(s){s=s.replace(/\.+$/,"").trim();if(s)items.push(s)}
+  var fs=sentences(lines[0].replace(/^#+\s*/,""));
+  var name=fs[0].replace(/:\s*$/,"").replace(/\.+$/,"").trim();
+  fs.slice(1).forEach(add);
+  lines.slice(1).forEach(function(ln){if(DASH.test(ln))add(ln.replace(DASH,""));else sentences(ln).forEach(add)});
   return{name:name||"Untitled list",items:items}}
 function byId(id){return S.lists.find(function(l){return l.id===id})}
 function pinLimit(){return Math.max(S.settings.slots-2,0)}
@@ -269,7 +280,7 @@ function vDash(){
 function vNew(){
   var p=parse(UI.draft),h='<div class="top"><button class="icon-btn" data-act="go" data-v="dash" aria-label="Back">'+IC.back+'</button><h1>New list</h1></div>';
   h+='<textarea class="entry" id="entry" placeholder="Groceries:\n- Milk\n- Eggs" aria-label="List text">'+esc(UI.draft)+'</textarea>';
-  h+='<div class="hint">First line is the name. Each line after it is one item.</div>';
+  h+='<div class="hint">The first sentence is the name. Everything after it is items, one per line or sentence.</div>';
   if(p){var c=UI._previewColor||(UI._previewColor=pickColor());
     h+='<div class="wcard" style="--c:'+c+';--t:'+textOn(c)+'"><div class="whead">'+esc(resolveRules(p).name)+'</div><div class="wbody">'+(p.items.length?p.items.map(function(t){return'<div class="item"><span class="cb" style="--c:'+c+'"></span><span class="tx">'+esc(t)+'</span></div>'}).join(""):'<div class="hint">Items will show here.</div>')+'</div></div>'}
   h+='<button class="primary" data-act="saveNew"'+(p?'':' disabled style="opacity:.5"')+'>Save list</button>';
