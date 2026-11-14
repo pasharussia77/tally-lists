@@ -24,13 +24,16 @@ class SlotWidgetProvider : AppWidgetProvider() {
                 if (l == null || item == null) return
                 if (Store.isLocked(c, l)) {
                     Toast.makeText(c, "This list is locked. Tap the lock to edit.", Toast.LENGTH_SHORT).show()
+                    Widgets.refresh(c)
                     return
                 }
                 if (i.getStringExtra(EXTRA_OP) == "del") Store.deleteItem(c, l, item) else Store.toggle(c, l, item)
+                Store.touchUnlock(c, l)
+                RelockReceiver.schedule(c)
                 Widgets.refresh(c)
             }
             ACTION_LOCK -> if (l != null) { Store.widgetLockToggle(c, l); RelockReceiver.schedule(c); Widgets.refresh(c) }
-            ACTION_SORT -> if (l != null) { Store.flip(c, l, "sortChecked"); Widgets.refresh(c) }
+            ACTION_SORT -> if (l != null) { Store.flip(c, l, "sortChecked"); Store.touchUnlock(c, l); RelockReceiver.schedule(c); Widgets.refresh(c) }
             else -> super.onReceive(c, i)
         }
     }

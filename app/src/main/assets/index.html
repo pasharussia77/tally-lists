@@ -167,7 +167,7 @@ var UI={view:"dash",listId:null,filter:"active",archiveOpen:null,draft:"",showCo
 
 /* ---------- storage ---------- */
 function load(){try{var r=window.Android?Android.getData():localStorage.getItem(SKEY);if(r){var d=JSON.parse(r);if(d&&d.lists){S.lists=d.lists;S.settings=Object.assign(S.settings,d.settings||{})}}}catch(e){}}
-function save(){try{if(window.Android){Android.saveData(JSON.stringify(S))}else{localStorage.setItem(SKEY,JSON.stringify(S))}}catch(e){}}
+function save(){try{var cl=UI.view==="list"?byId(UI.listId):null;if(cl&&!cl.locked&&cl.unlockedAt)cl.unlockedAt=Date.now();if(window.Android){Android.saveData(JSON.stringify(S))}else{localStorage.setItem(SKEY,JSON.stringify(S))}}catch(e){}}
 function uid(){return Math.random().toString(36).slice(2,9)}
 
 /* ---------- colors ---------- */
@@ -453,7 +453,7 @@ document.addEventListener("click",function(ev){
      snap("Merge lists");M2.ids.forEach(function(id){var s=byId(id);if(!s)return;s.items.forEach(function(i){kp.items.push({id:uid(),text:i.text,done:i.done})})});
      delete kp.manualDone;S.lists=S.lists.filter(function(x){return M2.ids.indexOf(x.id)<0});save();UI.merge=null;toast("Lists merged",true);render();break}
    case"sortc":l.sortChecked=!l.sortChecked;save();render();break;
-   case"lock":l.locked=!l.locked;delete l.unlockedAt;save();render();toast(l.locked?"List locked":"List unlocked");break;
+   case"lock":l.locked=!l.locked;if(l.locked)delete l.unlockedAt;else l.unlockedAt=Date.now();save();render();toast(l.locked?"List locked":"List unlocked. It locks again after 2 idle minutes");break;
    case"go":go(el.dataset.v);break;
    case"new":UI.draft="";UI._previewColor=null;go("new");break;
    case"saveNew":{var p=parse(UI.draft);if(!p)break;var rr=resolveRules(p);

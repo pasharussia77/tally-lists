@@ -9,6 +9,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
 
 object AlarmScheduler {
     private const val PREF = "tally_alarms"
@@ -95,6 +96,7 @@ class AlarmReceiver : BroadcastReceiver() {
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(c: Context, i: Intent) {
         AlarmScheduler.sync(c)
+        RelockReceiver.schedule(c)
         Widgets.refresh(c)
     }
 }
@@ -113,8 +115,16 @@ class RelockReceiver : BroadcastReceiver() {
                 c, 555, Intent(c, RelockReceiver::class.java),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
-            if (at == 0L) am.cancel(pi)
-            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at + 500, pi)
+            if (at == 0L) {
+                am.cancel(pi)
+                return
+            }
+            val t = at + 300
+            if (Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()) {
+                am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, t, pi)
+            } else {
+                am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, t, pi)
+            }
         }
     }
 }

@@ -33,6 +33,8 @@ class AddItemActivity : Activity() {
                 val items = Store.parseItems(et.text.toString())
                 if (items.isNotEmpty()) {
                     Store.addItems(this, id, items)
+                    Store.touchUnlock(this, id)
+                    RelockReceiver.schedule(this)
                     Widgets.refresh(this)
                     Toast.makeText(this, if (items.size == 1) "Added 1 item" else "Added ${items.size} items", Toast.LENGTH_SHORT).show()
                 }

@@ -171,6 +171,19 @@ object Store {
         saveRaw(c, d.toString())
     }
 
+    /** Doing something with an unlocked list restarts its two-minute countdown. */
+    fun touchUnlock(c: Context, listId: String) {
+        val d = load(c)
+        var changed = false
+        for (l in lists(d)) {
+            if (l.optString("id") == listId && !l.optBoolean("locked") && l.optLong("unlockedAt", 0) > 0) {
+                l.put("unlockedAt", System.currentTimeMillis())
+                changed = true
+            }
+        }
+        if (changed) saveRaw(c, d.toString())
+    }
+
     fun nextRelockAt(c: Context): Long {
         var best = 0L
         for (l in lists(load(c))) {

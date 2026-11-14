@@ -186,6 +186,7 @@ class MainActivity : Activity() {
         fun saveData(json: String) {
             Store.saveRaw(this@MainActivity, json)
             AlarmScheduler.sync(this@MainActivity)
+            RelockReceiver.schedule(this@MainActivity)
             SlotWidgetProvider.updateAll(this@MainActivity)
         }
 
