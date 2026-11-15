@@ -174,7 +174,10 @@ function uid(){return Math.random().toString(36).slice(2,9)}
 function hsl(h,s,l){s/=100;l/=100;var k=function(n){return(n+h/30)%12},a=s*Math.min(l,1-l);
   var f=function(n){return Math.round(255*(l-a*Math.max(-1,Math.min(k(n)-3,Math.min(9-k(n),1)))))};
   return"#"+[f(0),f(8),f(4)].map(function(v){return v.toString(16).padStart(2,"0")}).join("")}
-function pool(kind){var out=[],tones={soft:[[62,82]],rich:[[58,62],[52,48]],mixed:[[62,82],[58,64],[50,50]]}[kind]||[[62,82]];
+function soften(hex){var c=rgb(hex).map(function(v){return v/255}),mx=Math.max(c[0],c[1],c[2]),mn=Math.min(c[0],c[1],c[2]),l=(mx+mn)/2,d=mx-mn,hh=0,s=0;
+  if(d){s=d/(1-Math.abs(2*l-1));if(mx===c[0])hh=((c[1]-c[2])/d)%6;else if(mx===c[1])hh=(c[2]-c[0])/d+2;else hh=(c[0]-c[1])/d+4;hh*=60;if(hh<0)hh+=360}
+  return hsl(hh,Math.min(s*100,42),Math.min(Math.max(l*100,62),84))}
+function pool(kind){var out=[],tones={soft:[[42,84],[36,78]],rich:[[40,68],[34,62]],mixed:[[42,84],[38,74],[34,64]]}[kind]||[[42,84],[36,78]];
   for(var h=0;h<360;h+=12){tones.forEach(function(t){out.push(hsl(h,t[0],t[1]))})}return out}
 function rgb(hex){return[1,3,5].map(function(i){return parseInt(hex.substr(i,2),16)})}
 function dist(a,b){var x=rgb(a),y=rgb(b),rm=(x[0]+y[0])/2,dr=x[0]-y[0],dg=x[1]-y[1],db=x[2]-y[2];
@@ -361,7 +364,7 @@ function vSettings(){var s=S.settings;
   h+=tg("dateDupes","Add the date to every new list name","Shopping list, Nov 13");
   h+=tg("lockNew","Lock new lists","New lists start locked so they can\u2019t be changed by accident");
   h+=triggersHtml();
-  h+='<h2>Color palette</h2><div class="seg">'+[["soft","Soft"],["rich","Richer"],["mixed","Mixed"]].map(function(o){return'<button class="'+(s.palette===o[0]?'on':'')+'" data-act="palette" data-p="'+o[0]+'">'+o[1]+'</button>'}).join("")+'</div>';
+  h+='<h2>Color palette</h2><div class="seg">'+[["soft","Light"],["rich","Muted"],["mixed","Mixed"]].map(function(o){return'<button class="'+(s.palette===o[0]?'on':'')+'" data-act="palette" data-p="'+o[0]+'">'+o[1]+'</button>'}).join("")+'</div><button class="btn" data-act="softenAll">Soften my current list colors</button><div class="hint">Keeps each list’s hue but makes it gentler. You can undo it.</div>';
   if(window.Android){h+='<h2>App updates</h2><div class="srow"><div class="lb">Version '+esc(Android.getVersion())+'<small>Download the newest version from GitHub</small></div><button class="btn" data-act="checkUpdate">Check for updates</button></div>'}
   h+='<h2>Backup</h2><textarea class="io" id="io" aria-label="Backup data">'+esc(JSON.stringify(S.lists))+'</textarea><div style="display:flex;gap:8px;margin-top:8px"><button class="btn" data-act="copyBackup">Copy</button><button class="btn" data-act="restore">Restore from text</button></div>';
   return h}
@@ -419,6 +422,7 @@ document.addEventListener("click",function(ev){
    case"restoreLayout":Android.restoreLayout();toast("Layout restored");setTimeout(render,400);break;
    case"forgetMissing":Android.forgetMissing();toast("Missing slots forgotten");setTimeout(render,400);break;
    case"startOver":if(confirm("Forget where each list belongs? Lists will refill the slots newest first.")){Android.forgetLayout();toast("Started over");setTimeout(render,400)}break;
+   case"softenAll":snap("Soften colors");S.lists.forEach(function(x){x.color=soften(x.color)});save();render();toast("Colors softened",true);break;
    case"undo":undo();break;
    case"addTrig":{var tw=(document.getElementById("trigin").value||"").trim();var tl=S.settings.triggers||(S.settings.triggers=[]);
      if(!tw){break}if(tl.some(function(x){return String(x).toLowerCase()===tw.toLowerCase()})){toast("That word is already in the list");break}
