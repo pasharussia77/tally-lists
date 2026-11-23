@@ -95,20 +95,36 @@ object Store {
             taken.add(archSlot)
             result[archSlot] = Slot(null, arch)
         }
+        val fresh = ArrayList<JSONObject>()
         for (l in fulls) {
             val h = home.optInt(l.optString("id"), 0)
-            if (h in sorted && h !in taken) {
+            if (h != 0 && h in sorted && h !in taken) {
                 result[h] = Slot(l, emptyList())
                 taken.add(h)
+            } else if (h == 0) {
+                fresh.add(l)
             } else {
                 pending.add(l)
             }
         }
+        // Lists whose home slot is not available right now take the first free slot, keeping their home.
         for (l in pending) {
             val free = sorted.firstOrNull { it !in taken } ?: break
             result[free] = Slot(l, emptyList())
             taken.add(free)
-            if (home.optInt(l.optString("id"), 0) == 0) home.put(l.optString("id"), free)
+        }
+        // A brand-new list goes to the first slot and pushes the others back until a gap is found.
+        val order = sorted.filter { it != archSlot }
+        for (l in fresh.sortedBy { it.optLong("created") }) {
+            var carry: JSONObject? = l
+            for (s in order) {
+                val cur = result[s]?.list
+                result[s] = Slot(carry, emptyList())
+                carry?.let { home.put(it.optString("id"), s) }
+                taken.add(s)
+                carry = cur
+                if (carry == null) break
+            }
         }
         if (persist) {
             val ids = lists(d).map { it.optString("id") }.toSet()
